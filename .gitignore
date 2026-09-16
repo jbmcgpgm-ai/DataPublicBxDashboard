@@ -1,0 +1,7 @@
+# Données volumineuses régénérées par le pipeline — ne jamais committer
+data/raw/
+db/*.sqlite
+
+# Python
+__pycache__/
+*.pyc
