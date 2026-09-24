@@ -339,6 +339,15 @@
   .card-head-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .card-head-title-row .theme-tag { margin-bottom: 0; }
   .card-head-title-row h2 { margin: 0; }
+  /* En-tete compacte des cartes (2026-09-24) : titre + menu deroulant des
+     indicateurs sur une meme ligne ; le menu passe sous le titre si la
+     place manque (telephone). */
+  .carte-entete { align-items: center; margin-bottom: 12px; }
+  /* Telephone : les bascules Niveau / Ville / Comparaisons passent a la
+     ligne plutot que d'etre coupees (carte Pauvrete : 3 niveaux). */
+  @media (max-width: 900px) { #carte-bloc-indicateur .carte-view-toggles-row { flex-wrap: wrap; overflow-x: visible; row-gap: 8px; } }
+  .carte-entete .carte-iris-select { flex: 1 1 300px; width: auto; max-width: 520px; min-width: 0; margin-bottom: 0; }
+  @media (max-width: 900px) { .carte-entete .carte-iris-select { flex-basis: 100%; max-width: none; } }
   .theme-tag {
     display: inline-block;
     font-size: 11px;
@@ -979,7 +988,7 @@
   @media (min-width: 901px) {
     .carte-iris-wrap { flex-wrap: nowrap; }
     .carte-iris-wrap .carte-svg-frame { flex: 1 1 560px; min-width: 0; }
-    .carte-iris-wrap .carte-iris-legend { flex: 0 0 220px; min-width: 0; }
+    .carte-iris-wrap .carte-iris-legend { flex: 0 0 auto; min-width: 220px; max-width: 340px; }
   }
   .carte-svg-frame svg { width: 100%; height: auto; display: block; touch-action: none; }
 
@@ -4089,26 +4098,21 @@ function prechargerCartes() {
     carteNiveau = carte.niveaux.indexOf('quartier') !== -1 ? 'quartier' : carte.niveaux[0];
 
     let html = '';
-    html += '<div class="panel card">';
-    // "Cartes" et le titre de la carte sur la meme ligne (2026-08-25, demande
-    // explicite) -- auparavant l'un au-dessus de l'autre (theme-tag en bloc
-    // avec margin-bottom, h2 en dessous). Le texte de description est parti
-    // (cf. plus bas) dans le dernier bloc, sous un titre dedie.
-    html += '<div class="card-head"><div class="card-head-title-row">';
+    // En-tete compacte (2026-09-24, demande explicite « gagner de la place et
+    // simplifier ») : 1 seul pave au lieu de 2. Ligne 1 = « Cartes » + titre
+    // de la carte + menu deroulant des indicateurs ; ligne 2 = bascules
+    // Niveau / Ville / Comparaisons (a la place des 4 boutons de sommaire
+    // Indicateur / Affichage / Ville / Comparaisons, supprimes) ; puis les
+    // boutons de vue rapide quand l'indicateur en a.
+    html += '<div class="panel card" id="carte-bloc-indicateur">';
+    html += '<div class="card-head carte-entete"><div class="card-head-title-row">';
     html += '<span class="theme-tag">Cartes</span>';
     html += '<h2>' + carte.label + '</h2>';
-    html += '</div></div>';
-    // Sommaire de navigation rapide entre les 5 blocs (2026-08-25, demande
-    // explicite, idee "rendre plus fluide" -- surtout utile sur mobile ou la
-    // page est desormais longue). Defilement JS doux plutot que des ancres
-    // #hash classiques, pour ne pas polluer l'URL ni interferer avec la
-    // navigation mobile liste/detail (cf. showMobileDetail()).
-    html += '<div class="carte-quicknav" id="carte-quicknav">' +
-      '<button type="button" data-scroll-target="carte-bloc-indicateur">Indicateur</button>' +
-      '<button type="button" data-scroll-target="carte-bloc-affichage">Affichage</button>' +
-      '<button type="button" data-scroll-target="carte-bloc-carte">Ville</button>' +
-      '<button type="button" data-scroll-target="carte-extras">Comparaisons</button>' +
-      '</div>';
+    html += '</div>';
+    // Retour a un <select> natif simple (2026-08-25, demande explicite) --
+    // la combobox recherchable (essai precedent) ouvrait le clavier virtuel
+    // sur mobile au moindre tap, juge peu pratique par l'utilisateur.
+    html += '<select id="carte-iris-select" class="carte-iris-select" aria-label="Indicateur affiché sur la carte"></select>';
     html += '</div>';
 
     // Reagencement en 5 blocs (2026-08-25, demande explicite) :
@@ -4128,13 +4132,6 @@ function prechargerCartes() {
     //    cf. #carte-territorial-view-toggle-slot et renderCarteExtras()) --
     //    le pave "Methode de calcul" y regroupe aussi "A propos de cette
     //    carte" (texte de description, deplace du bloc 1), cf. renderCarteExtras()
-    html += '<div class="panel card" id="carte-bloc-indicateur">';
-    html += '<p class="chart-title">Indicateur</p>';
-    // Retour a un <select> natif simple (2026-08-25, demande explicite) --
-    // la combobox recherchable (essai precedent) ouvrait le clavier virtuel
-    // sur mobile au moindre tap, juge peu pratique par l'utilisateur. Le
-    // <select> redevient visible directement, sans wrapper de recherche.
-    html += '<select id="carte-iris-select" class="carte-iris-select"></select>';
     html += '<div class="panel-head-controls carte-view-toggles-row">';
     if (carte.niveaux.length > 1) {
       html += '<div class="carte-toggle-item">';
