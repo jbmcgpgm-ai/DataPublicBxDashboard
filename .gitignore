@@ -5,3 +5,6 @@ db/*.sqlite
 # Python
 __pycache__/
 *.pyc
+
+# Sortie de scripts/livrable/generate_dashboard.py (régénérable)
+dist/
