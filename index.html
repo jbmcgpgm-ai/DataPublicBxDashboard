@@ -345,7 +345,10 @@
   .carte-entete { align-items: center; margin-bottom: 12px; }
   /* Telephone : les bascules Niveau / Ville / Comparaisons passent a la
      ligne plutot que d'etre coupees (carte Pauvrete : 3 niveaux). */
-  @media (max-width: 900px) { #carte-bloc-indicateur .carte-view-toggles-row { flex-wrap: wrap; overflow-x: visible; row-gap: 8px; } }
+  @media (max-width: 900px) {
+    #carte-bloc-indicateur .carte-view-toggles-row { flex-wrap: wrap; overflow-x: visible; row-gap: 8px; }
+    .lbl-long { display: none; }
+  }
   .carte-entete .carte-iris-select { flex: 1 1 300px; width: auto; max-width: 520px; min-width: 0; margin-bottom: 0; }
   @media (max-width: 900px) { .carte-entete .carte-iris-select { flex-basis: 100%; max-width: none; } }
   .theme-tag {
@@ -577,6 +580,11 @@
      assez de place ; en usage normal les 3 groupes tiennent sans probleme,
      y compris a 390px de large. */
   .carte-view-toggles-row { margin-bottom: 4px; flex-wrap: nowrap; overflow-x: auto; }
+  /* Les 3 bascules Niveau / Ville / Comparaisons alignees sur une meme
+     ligne de base (2026-09-24, demande explicite : « Niveau » etait 4 px
+     plus haut que les 2 autres). */
+  #carte-bloc-indicateur .carte-view-toggles-row { align-items: flex-end; }
+  #carte-bloc-indicateur .carte-niveau-toggle { margin-bottom: 0; }
   #carte-iris-quick-toggle { margin-top: 8px; }
   /* Vues rapides a nombreux boutons (jusqu'a 7, 2026-09-24) : passage a la
      ligne quand la largeur manque (telephone), plutot que des boutons coupes. */
@@ -4087,7 +4095,9 @@ function prechargerCartes() {
     return html;
   }
 
-  const NIVEAU_LABELS = { iris: 'IRIS', quartier: 'Quartier', carreau: 'Carreau 200m' };
+  // « 200m » masque sur telephone (.lbl-long) pour que les 3 bascules tiennent
+  // sur une ligne (2026-09-24).
+  const NIVEAU_LABELS = { iris: 'IRIS', quartier: 'Quartier', carreau: 'Carreau<span class="lbl-long"> 200m</span>' };
 
   function renderCarte(carteId) {
     const carte = ciGetCarte(carteId);
@@ -4168,7 +4178,9 @@ function prechargerCartes() {
     html += '</div>';
     html += '</div>';
     html += '</div>';
-    html += '<div class="carte-iris-quick-toggle-instance" id="carte-iris-quick-toggle" style="display:none"></div>';
+    // Boutons de vue rapide (Total/Masculin/Feminin...) : l'exemplaire du pave
+    // d'en-tete est supprime (2026-09-24, demande explicite, doublon) -- seul
+    // reste celui du pave de la carte (#carte-iris-quick-toggle-bottom).
     html += '</div>';
 
     // Replie par defaut, ne s'ouvre qu'au clic sur le titre (2026-08-25,
