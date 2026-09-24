@@ -2143,6 +2143,29 @@ function prechargerCartes() {
       unite: 'etablissements',
       niveaux: ['quartier'],
       groupe: 'Secteurs d’activité',
+      colonne: 'Secteur',
+      titreComparaison: 'Répartition des établissements employeurs par secteur (%)',
+      methode: 'Parts des établissements employeurs par grand secteur publiées par l’Insee (elles somment à 100 %, à l’arrondi près). Nombre par secteur estimé = part × nombre total d’établissements employeurs, arrondi à l’unité.',
+      isPartition: true,
+      isPartitionTerritoire: true,
+      remplace: true,
+    }, {
+      // Taille (2026-09-24, demande explicite) : l'Insee ne publie que 1-9 et
+      // 10+ salaries (88,2 % a Bordeaux) ; le reste = etablissements
+      // employeurs dans l'annee mais sans salarie la derniere semaine de
+      // decembre (champ Flores), deduit et signale comme tel.
+      code: '__PARTITION_TAILLE_ETAB__',
+      label: 'Répartition des établissements employeurs par taille',
+      codes: ['ETABLISSEMENTS_PART_1_9SAL', 'ETABLISSEMENTS_PART_10PSAL'],
+      labels: ['1 à 9 salariés', '10 salariés ou plus'],
+      reste: { label: 'Aucun salarié fin décembre (déduit)' },
+      totalCode: 'ETABLISSEMENTS_TOTAL',
+      unite: 'etablissements',
+      niveaux: ['quartier'],
+      groupe: 'Secteurs d’activité',
+      colonne: 'Taille',
+      titreComparaison: 'Répartition des établissements employeurs par nombre de salariés fin décembre (%)',
+      methode: 'Parts des établissements employeurs de 1 à 9 et de 10 salariés ou plus publiées par l’Insee. La part « aucun salarié fin décembre » n’est pas publiée : elle est déduite (100 % moins les deux autres). Elle correspond à des établissements qui ont employé au moins un salarié dans l’année mais aucun la dernière semaine de décembre (champ Flores). Nombre par taille estimé = part × nombre total d’établissements employeurs, arrondi à l’unité.',
       isPartition: true,
       isPartitionTerritoire: true,
       remplace: true,
@@ -2387,6 +2410,13 @@ function prechargerCartes() {
     logement: [
       { dropdownLabel: 'Statut d’occupation (%)', options: [
         { code: 'PART_PROPRIETAIRES', label: 'Propriétaires' }, { code: 'PART_LOCATAIRES', label: 'Locataires' },
+      ] },
+      // Categories de logements (2026-09-24, demande explicite) : 1 seule
+      // entree de menu pour le camembert et les 3 categories, avec boutons.
+      { dropdownLabel: 'Catégories de logements', options: [
+        { code: '__PARTITION_CATEGORIES_LOGEMENTS__', label: 'Répartition' },
+        { code: 'RP_TOTAL', label: 'Principales' }, { code: 'RESID_SECONDAIRE', label: 'Secondaires' },
+        { code: 'LOG_VACANT', label: 'Vacants' },
       ] },
       { dropdownLabel: 'Type de logement', options: [
         { code: 'RP_APPART', label: 'Appartement' }, { code: 'RP_MAISON', label: 'Maison' },
@@ -3231,14 +3261,29 @@ function prechargerCartes() {
       return { label: part.labels[i], pct: pct, volume: pct !== undefined && total !== undefined ? pct * total / 100 : undefined };
     });
     if (total === undefined || parts.some(function (p) { return p.pct === undefined; })) return null;
+    // Part deduite (2026-09-24) : quand la source ne publie pas toutes les
+    // parts (ex. taille : 1-9 et 10+ salaries, mais pas « 0 salarie fin
+    // decembre »), la part manquante = 100 % - les autres, signalee comme deduite.
+    if (part.reste) {
+      const pct = Math.max(0, 100 - parts.reduce(function (s, p) { return s + p.pct; }, 0));
+      parts.unshift({ label: part.reste.label, pct: Math.round(pct * 10) / 10, volume: pct * total / 100 });
+    }
     return { total: total, parts: parts };
+  }
+
+  function partitionLibelles(part) { return (part.reste ? [part.reste.label] : []).concat(part.labels); }
+
+  function partitionNoteMethode(part) {
+    return 'parts publiées par l’Insee' +
+      (part.reste ? ' ; part « ' + part.reste.label.replace(' (déduit)', '') + ' » déduite (100 % moins les autres parts)' : '') +
+      ' ; nombre d’établissements estimé (part × total, arrondi).';
   }
 
   function renderPartitionTerritoireHtml(part) {
     const mill = partitionMillesime(part);
     const v = mill ? partitionValeurs(part, mill, 'Bordeaux (commune)') : null;
     if (!v) return '<p class="no-data-note">Pas de donnée pour Bordeaux.</p>';
-    const n = part.codes.length, colors = partitionCouleurs(n);
+    const n = v.parts.length, colors = partitionCouleurs(n);
     const segments = v.parts.map(function (p, i) {
       return { label: p.label, value: p.volume, unite: part.unite, color: colors[i], textColor: partitionTexte(i, n) };
     });
@@ -3250,14 +3295,14 @@ function prechargerCartes() {
     html += '<text x="' + built.cx + '" y="' + (built.cy + 14) + '" text-anchor="middle" font-size="11" fill="var(--ink-muted)">établissements</text>';
     html += '<text x="' + built.cx + '" y="' + (built.cy + 28) + '" text-anchor="middle" font-size="11" fill="var(--ink-muted)">employeurs</text>';
     html += '</svg>';
-    html += '<table class="partition-table"><thead><tr><th>Secteur</th><th class="num">Établissements employeurs</th><th class="num">Part</th></tr></thead><tbody>';
+    html += '<table class="partition-table"><thead><tr><th>' + (part.colonne || 'Catégorie') + '</th><th class="num">Établissements employeurs</th><th class="num">Part</th></tr></thead><tbody>';
     v.parts.forEach(function (p, i) {
       html += '<tr><td><span class="partition-secteur"><span class="pie-swatch" style="background:' + colors[i] + '"></span>' + p.label + '</span></td>' +
         '<td class="num">≈ ' + fmtNumber(p.volume, part.unite) + '</td><td class="num">' + fmtNumber(p.pct, 'pct') + '</td></tr>';
     });
     html += '<tr class="partition-total"><td>Total</td><td class="num">' + fmtNumber(v.total, part.unite) + '</td><td class="num">100 %</td></tr>';
     html += '</tbody></table></div>';
-    html += '<p class="chart-sub">Bordeaux (commune), ' + partitionMillesimeLabel(mill) + ' — parts publiées par l’Insee ; nombre d’établissements par secteur estimé (part × total, arrondi).</p>';
+    html += '<p class="chart-sub">Bordeaux (commune), ' + partitionMillesimeLabel(mill) + ' — ' + partitionNoteMethode(part) + '</p>';
     return html;
   }
 
@@ -3266,16 +3311,17 @@ function prechargerCartes() {
   // couleurs que le camembert, metropoles puis villes-centres.
   function partitionTerritoireExtrasHtml(carte, part) {
     const mill = partitionMillesime(part);
-    const n = part.codes.length, colors = partitionCouleurs(n);
+    const libelles = partitionLibelles(part);
+    const n = libelles.length, colors = partitionCouleurs(n);
     const groupes = [
       { titre: 'Métropoles', entites: villes.filter(function (v) { return v !== 'Bordeaux (commune)'; }) },
       { titre: 'Villes-centres', entites: ['Bordeaux (commune)'].concat(DATA.villes_centres_extra || []) },
     ];
     let html = '<div class="panel card">';
     html += '<p class="chart-title">Comparaisons territoriales</p>';
-    html += '<p class="chart-sub">Répartition des établissements employeurs par secteur (%) · ' + (mill ? partitionMillesimeLabel(mill) : '—') + '</p>';
+    html += '<p class="chart-sub">' + part.titreComparaison + ' · ' + (mill ? partitionMillesimeLabel(mill) : '—') + '</p>';
     html += '<div class="partition-legend">';
-    part.labels.forEach(function (l, i) {
+    libelles.forEach(function (l, i) {
       html += '<span class="partition-legend-item"><span class="pie-swatch" style="background:' + colors[i] + '"></span>' + l + '</span>';
     });
     html += '</div>';
@@ -3303,7 +3349,7 @@ function prechargerCartes() {
 
     html += '<details class="table-toggle"><summary>Voir les données en tableau</summary>';
     html += '<div class="panel" style="padding:14px;margin-top:8px"><div class="table-wrap"><table class="data-table"><thead><tr><th>Entité</th><th>Établissements employeurs</th>';
-    part.labels.forEach(function (l) { html += '<th>' + l + '</th>'; });
+    libelles.forEach(function (l) { html += '<th>' + l + '</th>'; });
     html += '</tr></thead><tbody>';
     lignesTableau.forEach(function (row) {
       html += '<tr><td>' + row[0] + '</td><td>' + fmtNumber(row[1].total, part.unite) + '</td>';
@@ -3316,7 +3362,7 @@ function prechargerCartes() {
     html += '<div class="panel card meta-footer">';
     html += '<p class="chart-title">À propos de cette carte</p><p class="def-text">' + carte.description + '</p>';
     html += '<div class="meta-grid">';
-    html += '<div class="meta-block"><span class="field-label">Méthode de calcul</span><p>Parts des établissements par grand secteur publiées par l’Insee (elles somment à 100 %, à l’arrondi près). Nombre par secteur estimé = part × nombre total d’établissements, arrondi à l’unité.</p></div>';
+    html += '<div class="meta-block"><span class="field-label">Méthode de calcul</span><p>' + part.methode + '</p></div>';
     html += '<div class="meta-block"><span class="field-label">Source(s)</span><p>' + (ref.sources || '—') + '</p></div>';
     html += '<div class="meta-block limites"><span class="field-label">Limites</span><p>Donnée disponible seulement pour la commune et les métropoles : la source ne détaille pas les quartiers. ' + (ref.limites || '') + '</p></div>';
     html += '</div></div>';
