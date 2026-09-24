@@ -1062,7 +1062,7 @@ const DATA = {"entites_villes":["Bordeaux (commune)","Bordeaux Métropole (EPCI)
 // de fichiers contiennent une empreinte du contenu : le navigateur les garde
 // en cache et ne retelecharge que ce qui a change d'un build a l'autre.
 const CARTE_DATA = { base: null, overlays: null, cartes: [{"id":"population","label":"Population et ménages"},{"id":"pauvrete","label":"Pauvreté et niveau de vie"},{"id":"emploi","label":"Emploi et formation"},{"id":"logement","label":"Logement et énergie"},{"id":"dvf","label":"Marché immobilier (DVF)"},{"id":"sirene","label":"Tissu économique (Sirene)"},{"id":"chaleur","label":"Chaleur et vulnérabilité"},{"id":"urbain","label":"Vie urbaine et sécurité"}] };
-const CARTE_FICHIERS = {"cartes":{"population":"cartes/carte_population.06348aa4ac.js","pauvrete":"cartes/carte_pauvrete.95c849b583.js","emploi":"cartes/carte_emploi.0b4e0c291c.js","logement":"cartes/carte_logement.440f5b8b08.js","dvf":"cartes/carte_dvf.7c317fe611.js","sirene":"cartes/carte_sirene.8533da9209.js","chaleur":"cartes/carte_chaleur.641f0ede6d.js","urbain":"cartes/carte_urbain.49d8720531.js"},"base":"cartes/carte_base.15a6bc6650.js","overlays":"cartes/carte_overlays.b8957976fd.js"};
+const CARTE_FICHIERS = {"cartes":{"population":"cartes/carte_population.06348aa4ac.js","pauvrete":"cartes/carte_pauvrete.95c849b583.js","emploi":"cartes/carte_emploi.0b4e0c291c.js","logement":"cartes/carte_logement.440f5b8b08.js","dvf":"cartes/carte_dvf.7c317fe611.js","sirene":"cartes/carte_sirene.7e29738e73.js","chaleur":"cartes/carte_chaleur.641f0ede6d.js","urbain":"cartes/carte_urbain.49d8720531.js"},"base":"cartes/carte_base.15a6bc6650.js","overlays":"cartes/carte_overlays.b8957976fd.js"};
 
 window.__carteChunk = function (cle, obj) {
   if (cle === 'base') { CARTE_DATA.base = obj; return; }
@@ -2142,7 +2142,6 @@ function prechargerCartes() {
       totalCode: 'ETABLISSEMENTS_TOTAL',
       unite: 'etablissements',
       niveaux: ['quartier'],
-      groupe: 'Secteurs d’activité',
       colonne: 'Secteur',
       titreComparaison: 'Répartition des établissements employeurs par secteur (%)',
       methode: 'Parts des établissements employeurs par grand secteur publiées par l’Insee (elles somment à 100 %, à l’arrondi près). Nombre par secteur estimé = part × nombre total d’établissements employeurs, arrondi à l’unité.',
@@ -2162,7 +2161,6 @@ function prechargerCartes() {
       totalCode: 'ETABLISSEMENTS_TOTAL',
       unite: 'etablissements',
       niveaux: ['quartier'],
-      groupe: 'Secteurs d’activité',
       colonne: 'Taille',
       titreComparaison: 'Répartition des établissements employeurs par nombre de salariés fin décembre (%)',
       methode: 'Parts des établissements employeurs de 1 à 9 et de 10 salariés ou plus publiées par l’Insee. La part « aucun salarié fin décembre » n’est pas publiée : elle est déduite (100 % moins les deux autres). Elle correspond à des établissements qui ont employé au moins un salarié dans l’année mais aucun la dernière semaine de décembre (champ Flores). Nombre par taille estimé = part × nombre total d’établissements employeurs, arrondi à l’unité.',
