@@ -381,6 +381,9 @@
   .mill-pill.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
   .chart-title { font-size: 13px; font-weight: 600; color: var(--ink-secondary); margin: 0 0 4px; }
+  /* Titre du pave carte = intitule de l'indicateur : plus visible qu'un
+     simple libelle de section (2026-09-24). */
+  .chart-title.carte-iris-titre { font-size: 15px; color: var(--ink); line-height: 1.35; text-wrap: balance; }
   .chart-sub { font-size: 12px; color: var(--ink-muted); margin: 0 0 14px; }
   .unite-note { font-size: 12px; color: var(--ink-muted); }
 
@@ -969,6 +972,15 @@
   }
 
   .carte-svg-frame { position: relative; width: 100%; max-width: 560px; touch-action: none; }
+  /* Version ordinateur (2026-09-24, demande explicite) : la legende reste
+     toujours a cote de la carte, jamais en dessous -- la carte se reduit si
+     la largeur manque, la legende garde une largeur fixe. Le telephone
+     (<= 900 px, cf. media query plus bas) garde la legende sous la carte. */
+  @media (min-width: 901px) {
+    .carte-iris-wrap { flex-wrap: nowrap; }
+    .carte-iris-wrap .carte-svg-frame { flex: 1 1 560px; min-width: 0; }
+    .carte-iris-wrap .carte-iris-legend { flex: 0 0 220px; min-width: 0; }
+  }
   .carte-svg-frame svg { width: 100%; height: auto; display: block; touch-action: none; }
 
   /* --- Responsive mobile : au-dela du simple passage en 1 colonne (deja
@@ -3493,6 +3505,10 @@ function prechargerCartes() {
     // menu deroulant ci-dessous qui applique la meme regle) -- reutilise dans
     // l'infobulle et le titre de legende pour rester coherent partout.
     let indLabel = (DATA.indicateurs[code] && DATA.indicateurs[code].nom) || ind.label;
+    // Titre du pave carte = intitule de l'indicateur (2026-09-24), sans les
+    // precisions techniques de menu entre parentheses.
+    const titreEl = document.getElementById('carte-iris-titre');
+    if (titreEl) titreEl.textContent = indLabel.replace(/ \((camembert par quartier|sélection multiple)\)$/, '');
     // Niveaux geographiques valables pour CET indicateur precis (ex. carte
     // "Pauvrete et niveau de vie" fusionnee, 2026-07-31 : les 7 indicateurs
     // Filosofi IRIS/quartier n'existent pas par carreau, et les 4 indicateurs
@@ -4174,7 +4190,9 @@ function prechargerCartes() {
 
     html += '<div class="panel card" id="carte-bloc-carte">';
     html += '<div class="panel-head-row"><div>';
-    html += '<p class="chart-title">Indicateur affich\u00e9</p>';
+    // Titre = intitule de l'indicateur affiche (2026-09-24, demande explicite),
+    // renseigne par renderCarteIndicateur ; « Indicateur affiché » par defaut.
+    html += '<p class="chart-title carte-iris-titre" id="carte-iris-titre">Indicateur affich\u00e9</p>';
     html += '<p class="chart-sub" id="carte-iris-subtitle">Classes par quantiles</p>';
     html += '</div>';
     html += '</div>';
