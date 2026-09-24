@@ -576,6 +576,9 @@
      comparaisons territoriales) sont cote a cote avec des libelles de bouton
      identiques -- sans etiquette on ne sait pas laquelle controle quoi. */
   .carte-toggle-item { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
+  /* Etiquette orpheline (2026-09-24) : quand le JS masque une bascule, son
+     libelle (« Niveau », « Ville ») disparait avec elle. */
+  .carte-toggle-item:has(> .view-toggle[style*="display: none"]) { display: none; }
   .carte-toggle-label { font-size: 11px; font-weight: 600; color: var(--ink-secondary); white-space: nowrap; }
   /* Les 2 bascules Carte/Barres (ville + comparaisons territoriales) restent
      toujours cote a cote (2026-08-25, demande explicite "sur la meme
@@ -610,6 +613,23 @@
   .pie-legend { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 220px; }
   .pie-legend-row { display: grid; grid-template-columns: 13px 1fr auto; align-items: center; gap: 10px; font-size: 14.5px; }
   .pie-swatch { width: 13px; height: 13px; border-radius: 3px; }
+  /* Partitions territoriales (2026-09-24) : camembert + tableau, barres empilees */
+  .partition-territoire { display: flex; flex-wrap: wrap; gap: 20px 28px; align-items: center; margin-top: 6px; }
+  .partition-territoire-pie { width: 260px; max-width: 100%; height: auto; flex: none; }
+  .partition-table { border-collapse: collapse; font-size: 13px; flex: 1 1 280px; min-width: 0; }
+  .partition-table th { text-align: left; font-size: 11.5px; font-weight: 600; color: var(--ink-muted); padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  .partition-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+  .partition-secteur { display: flex; align-items: center; gap: 8px; }
+  .partition-table .pie-swatch, .partition-legend-item .pie-swatch { flex: none; }
+  .partition-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .partition-table .partition-total td { font-weight: 700; border-bottom: none; }
+  .pstack-group-title { font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-muted); margin: 16px 0 6px; }
+  .pstack-row { display: grid; grid-template-columns: minmax(84px, 190px) minmax(0, 1fr); gap: 10px; align-items: center; margin: 5px 0; }
+  .pstack-name { font-size: 13px; color: var(--ink-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pstack-row-bordeaux .pstack-name { color: var(--ink); font-weight: 700; }
+  .pstack-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; background: var(--surface-sunken); }
+  .pstack-row-bordeaux .pstack-bar { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pstack-seg { height: 100%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 0; overflow: hidden; white-space: nowrap; }
   .pie-legend-label { color: var(--ink-secondary); }
   .pie-legend-value { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); white-space: nowrap; font-size: 14.5px; }
 
@@ -2105,6 +2125,28 @@ function prechargerCartes() {
       groupe: 'Familles Ménages Variations',
       isPartition: true,
     }],
+    // Partitions « territoriales » (2026-09-24, demande explicite) : jeux de
+    // parts qui somment a 100 % mais n'existent qu'a l'echelle de la commune
+    // et des metropoles (pas de detail par quartier dans la source) -- chaque
+    // part seule donnait sur la carte un unique chiffre pour toute la ville.
+    // Remplacees dans le menu (remplace: true) par 1 seule entree : camembert
+    // de Bordeaux dans « Indicateur affiché », barres empilees a 100 % dans
+    // « Comparaisons territoriales ». Volumes = part x total, arrondis.
+    sirene: [{
+      code: '__PARTITION_SECTEURS_ETAB__',
+      label: 'Répartition des établissements par secteur d’activité',
+      codes: ['ETABLISSEMENTS_PART_COMMERCE_SERVICES', 'ETABLISSEMENTS_PART_ADMIN_SANTE',
+              'ETABLISSEMENTS_PART_CONSTRUCTION', 'ETABLISSEMENTS_PART_INDUSTRIE', 'ETABLISSEMENTS_PART_AGRI'],
+      labels: ['Commerce, transports, services divers', 'Administration publique, enseignement, santé, action sociale',
+               'Construction', 'Industrie', 'Agriculture, sylviculture, pêche'],
+      totalCode: 'ETABLISSEMENTS_TOTAL',
+      unite: 'etablissements',
+      niveaux: ['quartier'],
+      groupe: 'Secteurs d’activité',
+      isPartition: true,
+      isPartitionTerritoire: true,
+      remplace: true,
+    }],
   };
 
   // Selection multiple (2026-08-24, demande explicite) : au lieu de choisir
@@ -2367,6 +2409,11 @@ function prechargerCartes() {
       } else {
         ms.codes.forEach(function (c) { excluded[c] = true; });
       }
+    });
+    // Partitions territoriales (2026-09-24) : leurs parts individuelles sont
+    // remplacees par l'entree unique de la partition.
+    (CARTE_PARTITIONS[carte.id] || []).forEach(function (p) {
+      if (p.remplace) p.codes.forEach(function (c) { excluded[c] = true; });
     });
     return ciAllIndicateurs(carte).filter(function (ind) { return !excluded[ind.code]; });
   }
@@ -2884,6 +2931,15 @@ function prechargerCartes() {
     if (!el) return;
     const carte = ciGetCarte(carteId);
     const dataInd = DATA.indicateurs[code];
+    const partInd = carte ? ciFindIndicateur(carte, code) : null;
+    if (partInd && partInd.isPartitionTerritoire) {
+      el.innerHTML = partitionTerritoireExtrasHtml(carte, partInd);
+      const slotItem = document.getElementById('carte-territorial-view-toggle-item');
+      const slot = document.getElementById('carte-territorial-view-toggle-slot');
+      if (slotItem) slotItem.style.display = 'none';
+      if (slot) slot.innerHTML = '';
+      return;
+    }
     if (!dataInd) {
       // Cas des pseudo-indicateurs (selection multiple, camemberts) : pas
       // d'entree DATA.indicateurs, donc pas de comparaisons territoriales ni
@@ -3115,6 +3171,135 @@ function prechargerCartes() {
     return html;
   }
 
+  // --- Partitions territoriales (2026-09-24, cf. CARTE_PARTITIONS) ----------
+  function partitionCouleurs(n) {
+    const style = getComputedStyle(document.documentElement);
+    const lightRgb = hexToRgb(style.getPropertyValue('--accent-tint') || '#F1DCE2');
+    const darkRgb = hexToRgb(style.getPropertyValue('--accent-strong') || '#5E1730');
+    return Array.from({ length: n }, function (_, i) { return lerpColor(darkRgb, lightRgb, n > 1 ? i / (n - 1) : 0); });
+  }
+  // Texte lisible sur chaque part : clair sur les teintes foncees (debut de
+  // palette), fonce sur les teintes claires.
+  function partitionTexte(i, n) { return (n > 1 ? i / (n - 1) : 0) <= 0.5 ? 'var(--accent-ink)' : 'var(--ink)'; }
+
+  // Dernier millesime disponible a la fois pour toutes les parts et le total.
+  function partitionMillesime(part) {
+    const first = DATA.indicateurs[part.codes[0]];
+    if (!first) return null;
+    const ms = Object.keys(first.millesimes).filter(function (m) {
+      return part.codes.concat([part.totalCode]).every(function (c) {
+        return DATA.indicateurs[c] && DATA.indicateurs[c].millesimes[m];
+      });
+    });
+    return ms.length ? ms[ms.length - 1] : null;
+  }
+
+  // « InseeComparateur2024 » -> « établissements fin 2024 (Insee) » ; autres
+  // millesimes affiches tels quels.
+  function partitionMillesimeLabel(mill) {
+    const m = /^InseeComparateur(\d{4})$/.exec(mill);
+    return m ? 'établissements fin ' + m[1] + ' (Insee)' : mill;
+  }
+
+  // {total, parts:[{label, pct, volume}]} pour une entite, ou null.
+  function partitionValeurs(part, mill, ent) {
+    const total = DATA.indicateurs[part.totalCode].millesimes[mill][ent];
+    const parts = part.codes.map(function (c, i) {
+      const pct = DATA.indicateurs[c].millesimes[mill][ent];
+      return { label: part.labels[i], pct: pct, volume: pct !== undefined && total !== undefined ? pct * total / 100 : undefined };
+    });
+    if (total === undefined || parts.some(function (p) { return p.pct === undefined; })) return null;
+    return { total: total, parts: parts };
+  }
+
+  function renderPartitionTerritoireHtml(part) {
+    const mill = partitionMillesime(part);
+    const v = mill ? partitionValeurs(part, mill, 'Bordeaux (commune)') : null;
+    if (!v) return '<p class="no-data-note">Pas de donnée pour Bordeaux.</p>';
+    const n = part.codes.length, colors = partitionCouleurs(n);
+    const segments = v.parts.map(function (p, i) {
+      return { label: p.label, value: p.volume, unite: part.unite, color: colors[i], textColor: partitionTexte(i, n) };
+    });
+    const built = ciPieSegmentsSvg(segments, 260);
+    let html = '<div class="partition-territoire">';
+    html += '<svg viewBox="0 0 260 260" class="partition-territoire-pie" role="img" aria-label="' + part.label + ' — Bordeaux">';
+    html += built.paths + built.labels;
+    html += '<text x="' + built.cx + '" y="' + (built.cy - 4) + '" text-anchor="middle" font-size="20" font-weight="700" fill="var(--ink)">' + fmtNumber(v.total, part.unite) + '</text>';
+    html += '<text x="' + built.cx + '" y="' + (built.cy + 14) + '" text-anchor="middle" font-size="11" fill="var(--ink-muted)">établissements</text>';
+    html += '</svg>';
+    html += '<table class="partition-table"><thead><tr><th>Secteur</th><th class="num">Établissements</th><th class="num">Part</th></tr></thead><tbody>';
+    v.parts.forEach(function (p, i) {
+      html += '<tr><td><span class="partition-secteur"><span class="pie-swatch" style="background:' + colors[i] + '"></span>' + p.label + '</span></td>' +
+        '<td class="num">≈ ' + fmtNumber(p.volume, part.unite) + '</td><td class="num">' + fmtNumber(p.pct, 'pct') + '</td></tr>';
+    });
+    html += '<tr class="partition-total"><td>Total</td><td class="num">' + fmtNumber(v.total, part.unite) + '</td><td class="num">100 %</td></tr>';
+    html += '</tbody></table></div>';
+    html += '<p class="chart-sub">Bordeaux (commune), ' + partitionMillesimeLabel(mill) + ' — parts publiées par l’Insee ; nombre d’établissements par secteur estimé (part × total, arrondi).</p>';
+    return html;
+  }
+
+  // Comparaisons territoriales d'une partition : 1 barre empilee a 100 % par
+  // territoire (16 camemberts cote a cote seraient illisibles), memes
+  // couleurs que le camembert, metropoles puis villes-centres.
+  function partitionTerritoireExtrasHtml(carte, part) {
+    const mill = partitionMillesime(part);
+    const n = part.codes.length, colors = partitionCouleurs(n);
+    const groupes = [
+      { titre: 'Métropoles', entites: villes.filter(function (v) { return v !== 'Bordeaux (commune)'; }) },
+      { titre: 'Villes-centres', entites: ['Bordeaux (commune)'].concat(DATA.villes_centres_extra || []) },
+    ];
+    let html = '<div class="panel card">';
+    html += '<p class="chart-title">Comparaisons territoriales</p>';
+    html += '<p class="chart-sub">Répartition des établissements par secteur (%) · ' + (mill ? partitionMillesimeLabel(mill) : '—') + '</p>';
+    html += '<div class="partition-legend">';
+    part.labels.forEach(function (l, i) {
+      html += '<span class="partition-legend-item"><span class="pie-swatch" style="background:' + colors[i] + '"></span>' + l + '</span>';
+    });
+    html += '</div>';
+    const lignesTableau = [];
+    groupes.forEach(function (g) {
+      html += '<p class="pstack-group-title">' + g.titre + '</p>';
+      g.entites.forEach(function (ent) {
+        const v = mill ? partitionValeurs(part, mill, ent) : null;
+        if (!v) return;
+        lignesTableau.push([ent, v]);
+        const court = ent.replace(' (EPCI)', '').replace(' (commune)', '');
+        const estBordeaux = ent.indexOf('Bordeaux') === 0;
+        html += '<div class="pstack-row' + (estBordeaux ? ' pstack-row-bordeaux' : '') + '">';
+        html += '<span class="pstack-name" title="' + ent + '">' + court + '</span>';
+        html += '<div class="pstack-bar" role="img" aria-label="' + ent + '">';
+        v.parts.forEach(function (p, i) {
+          html += '<div class="pstack-seg" style="width:' + p.pct.toFixed(2) + '%;background:' + colors[i] + ';color:' + partitionTexte(i, n) + '"' +
+            ' title="' + court + ' — ' + p.label + ' : ' + fmtNumber(p.pct, 'pct') + ' (≈ ' + fmtNumber(p.volume, part.unite) + ' établissements)">' +
+            (p.pct >= 9 ? Math.round(p.pct) + ' %' : '') + '</div>';
+        });
+        html += '</div></div>';
+      });
+    });
+    html += '</div>';
+
+    html += '<details class="table-toggle"><summary>Voir les données en tableau</summary>';
+    html += '<div class="panel" style="padding:14px;margin-top:8px"><div class="table-wrap"><table class="data-table"><thead><tr><th>Entité</th><th>Établissements</th>';
+    part.labels.forEach(function (l) { html += '<th>' + l + '</th>'; });
+    html += '</tr></thead><tbody>';
+    lignesTableau.forEach(function (row) {
+      html += '<tr><td>' + row[0] + '</td><td>' + fmtNumber(row[1].total, part.unite) + '</td>';
+      row[1].parts.forEach(function (p) { html += '<td>' + fmtNumber(p.pct, 'pct') + ' (≈ ' + fmtNumber(p.volume, part.unite) + ')</td>'; });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div></details>';
+
+    const ref = DATA.indicateurs[part.codes[0]] || {};
+    html += '<div class="panel card meta-footer">';
+    html += '<p class="chart-title">À propos de cette carte</p><p class="def-text">' + carte.description + '</p>';
+    html += '<div class="meta-grid">';
+    html += '<div class="meta-block"><span class="field-label">Méthode de calcul</span><p>Parts des établissements par grand secteur publiées par l’Insee (elles somment à 100 %, à l’arrondi près). Nombre par secteur estimé = part × nombre total d’établissements, arrondi à l’unité.</p></div>';
+    html += '<div class="meta-block"><span class="field-label">Source(s)</span><p>' + (ref.sources || '—') + '</p></div>';
+    html += '<div class="meta-block limites"><span class="field-label">Limites</span><p>Donnée disponible seulement pour la commune et les métropoles : la source ne détaille pas les quartiers. ' + (ref.limites || '') + '</p></div>';
+    html += '</div></div>';
+    return html;
+  }
+
   function renderCartePartitionPies(carte, part) {
     const style = getComputedStyle(document.documentElement);
     const lightRgb = hexToRgb(style.getPropertyValue('--accent-tint') || '#F1DCE2');
@@ -3235,6 +3420,17 @@ function prechargerCartes() {
       if (barsWrap) barsWrap.style.display = 'none';
       if (noDataEl) { noDataEl.style.display = 'none'; noDataEl.innerHTML = ''; }
       if (multiselectEl) { multiselectEl.style.display = 'none'; multiselectEl.innerHTML = ''; }
+      if (ind.isPartitionTerritoire) {
+        // Un seul territoire (pas de quartiers) : la bascule IRIS/quartier n'a pas de sens.
+        if (niveauToggleEl) niveauToggleEl.style.display = 'none';
+        if (subtitleEl) subtitleEl.textContent = 'Bordeaux (commune) — la source ne détaille pas les quartiers';
+        if (partitionPiesEl) {
+          partitionPiesEl.style.display = '';
+          partitionPiesEl.innerHTML = renderPartitionTerritoireHtml(ind);
+        }
+        return;
+      }
+      if (niveauToggleEl) niveauToggleEl.style.display = '';
       if (subtitleEl) subtitleEl.textContent = '8 quartiers officiels';
       if (partitionPiesEl) {
         partitionPiesEl.style.display = '';
