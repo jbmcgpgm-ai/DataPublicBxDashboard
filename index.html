@@ -1038,6 +1038,90 @@
     .carte-view-toggles-row .view-toggle { padding: 1px; gap: 1px; }
     .carte-view-toggles-row .view-toggle button { padding: 3px 6px; font-size: 11px; }
   }
+  /* --- Créateur de carte (brief docs/brief-createur-carte.md) --- */
+  .cartes-nav-item.createur-carte-btn {
+    margin-top: 8px; border: 1px dashed var(--line-strong); color: var(--accent); font-weight: 600;
+  }
+  .cartes-nav-item.createur-carte-btn.active { color: var(--accent-ink); border-style: solid; }
+  .cc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .cc-dialog {
+    width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0;
+    border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-raised); color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+  .cc-dialog::backdrop { background: rgba(36, 26, 29, 0.55); }
+  .cc-dialog form { padding: 18px 22px 22px; }
+  .cc-dialog-entete { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .cc-dialog h2 { margin: 0; font-size: 20px; }
+  .cc-fermer {
+    font-size: 26px; line-height: 1; width: 44px; height: 44px; border: none; border-radius: 6px;
+    background: transparent; color: var(--ink); cursor: pointer;
+  }
+  .cc-fermer:hover { background: var(--surface-sunken); }
+  .cc-intro { font-size: 14px; color: var(--ink-secondary); margin: 6px 0 12px; }
+  .cc-dialog fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px 14px; margin: 0 0 14px; min-width: 0; }
+  .cc-dialog legend { font-weight: 700; padding: 0 6px; }
+  .cc-dialog label { display: block; font-size: 14px; font-weight: 600; margin: 12px 0 4px; }
+  .cc-dialog input[type="text"], .cc-dialog select, .cc-dialog input[type="file"] {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 8px 10px;
+    border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink);
+  }
+  .cc-dialog input:focus-visible, .cc-dialog select:focus-visible, .cc-dialog summary:focus-visible,
+  .cc-bouton:focus-visible, .cc-lien:focus-visible, .cc-fermer:focus-visible, .cc-titre-carte:focus-visible,
+  .cc-tableau summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .cc-dialog input[aria-invalid="true"], .cc-dialog select[aria-invalid="true"] { border-color: #b3261e; border-width: 2px; }
+  .cc-aide { font-size: 13px; color: var(--ink-secondary); margin: 4px 0 0; line-height: 1.45; }
+  .cc-erreur { font-size: 13.5px; font-weight: 600; color: #b3261e; margin: 4px 0 0; }
+  .cc-erreur:empty { display: none; }
+  .cc-lien { background: none; border: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
+  .cc-modeemploi { margin-top: 10px; font-size: 14px; }
+  .cc-modeemploi summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .cc-modeemploi ol { margin: 8px 0 0; padding-left: 22px; line-height: 1.5; }
+  .cc-rapport { margin-top: 12px; font-size: 14px; }
+  .cc-rapport ul { margin: 4px 0 8px; padding-left: 20px; max-height: 9em; overflow: auto; }
+  .cc-rapport-titre { font-weight: 600; margin: 10px 0 0; }
+  .cc-rapport-bilan { margin: 0; }
+  .cc-dialog .cc-doublon { margin: 6px 0; padding: 6px 12px 8px; }
+  .cc-dialog .cc-doublon label { display: inline; font-weight: 400; margin: 0; }
+  .cc-doublon div { padding: 3px 0; }
+  .cc-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .cc-bouton {
+    font: inherit; font-size: 14.5px; min-height: 44px; padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+  }
+  .cc-bouton:hover { background: var(--surface-sunken); }
+  .cc-bouton.cc-principal { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .cc-bouton.cc-principal:hover { background: var(--accent-strong); }
+  .cc-titre-carte { margin: 0; font-size: 21px; line-height: 1.3; }
+  .cc-sous-titre { margin: 4px 0 12px; font-size: 14px; color: var(--ink-secondary); }
+  .cc-carte-et-legende { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .cc-carte { flex: 1 1 300px; max-width: 560px; min-width: 0; background: #ffffff; border-radius: 8px; }
+  .cc-carte svg { display: block; width: 100%; height: auto; }
+  .cc-legende { flex: 0 1 240px; font-size: 14px; }
+  .cc-legende-titre { font-weight: 700; margin: 0 0 6px; }
+  .cc-legende ul { list-style: none; margin: 0; padding: 0; }
+  .cc-legende li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+  .cc-pastille { width: 22px; height: 16px; flex: none; border: 1px solid #6B5A5E; }
+  .cc-hachure { background: repeating-linear-gradient(45deg, #ded9d0 0 3px, #9a9185 3px 5px); }
+  .cc-nb { color: var(--ink-secondary); }
+  .cc-origine { font-size: 13px; color: var(--ink-secondary); margin: 12px 0 0; }
+  .cc-tableau { margin-top: 14px; font-size: 14px; }
+  .cc-tableau summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  .cc-tableau table { border-collapse: collapse; margin-top: 8px; width: 100%; }
+  .cc-tableau th, .cc-tableau td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  .cc-tableau th[scope="row"] { font-weight: 400; }
+  .cc-tableau td.cc-num { text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 600px) {
+    .cc-dialog form { padding: 14px; }
+    .cc-dialog fieldset { padding: 8px 10px 12px; }
+  }
+  .cc-proposer-msg:empty { display: none; }
+  .cc-proposer-msg { margin-top: 12px; padding: 10px 14px; border-left: 4px solid var(--accent);
+    background: var(--accent-tint); border-radius: 6px; font-size: 14.5px; }
+  .cc-proposer-msg p { margin: 4px 0; }
+
 </style>
 
 <div class="app">
@@ -1057,6 +1141,7 @@
       <div class="panel cartes-nav">
         <div class="cartes-nav-title">Cartes</div>
         <div id="cartes-nav-list"></div>
+        <button type="button" class="cartes-nav-item createur-carte-btn" id="createur-carte-btn" aria-haspopup="dialog">+ Créer ma carte</button>
       </div>
       <aside class="panel picker">
       <div>
@@ -4433,6 +4518,7 @@ function prechargerCartes() {
   }
 
   function updateCartesNavActive() {
+    document.querySelectorAll('.createur-carte-btn').forEach(function (b) { b.classList.toggle('active', currentCode === '__createur'); });
     CARTE_DATA.cartes.forEach(function (c) {
       const btn = document.getElementById('carte-nav-btn-' + c.id);
       if (btn) btn.className = 'cartes-nav-item' + (currentCode === '__carte_' + c.id ? ' active' : '');
@@ -4710,6 +4796,18 @@ function prechargerCartes() {
 
   renderCartesNav();
 
+  // Créateur de carte (2026-11-05, createur_carte_ui.js) : affiche son
+  // contenu à la place d'une carte ou d'une fiche, sans entrée dans le menu
+  // « Cartes » (plafond de 9 entrées, décision 17 du journal).
+  window.__createurCarte = {
+    ouvrirContenu: function () {
+      currentCode = '__createur';
+      renderList(searchEl.value, cleOnlyEl.checked);
+      showMobileDetail();
+      return contentEl;
+    }
+  };
+
   renderList('', false);
   selectIndicateur('POP_TOTAL');
   // Page d'accueil mobile (2026-08-25, demande explicite) : selectIndicateur()
@@ -4722,4 +4820,1047 @@ function prechargerCartes() {
   if (window.matchMedia('(max-width: 900px)').matches) showMobileList('cartes');
   prechargerCartes();
 })();
+</script>
+<script>
+/*
+ * Créateur de carte — logique sans affichage (brief : docs/brief-createur-carte.md
+ * du projet DATA_PUBLIQUE_Bx, décisions 1 à 17 du journal de méthode).
+ *
+ * Ce fichier ne touche pas à la page : il ne contient que des fonctions
+ * « pures » (une entrée → une sortie), testées par
+ * tests/createur_carte.test.js (lancer depuis ABS_Bdx :
+ * node --test tests/createur_carte.test.js).
+ * Il fonctionne dans le navigateur (objet global `CreateurCarte`) et sous Node
+ * (module.exports) pour les tests.
+ *
+ * Aucune donnée importée ne quitte le navigateur (décision 1).
+ */
+(function (racine, fabrique) {
+  'use strict';
+  const api = fabrique();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else racine.CreateurCarte = api;
+}(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------
+  // Brique 0 — Données de référence : les mailles disponibles
+  // ---------------------------------------------------------------------
+  // Mailles de Bordeaux (décision 6). Les carreaux de 200 m ne sont PAS
+  // proposés à ce stade : dans le site, ils ne portent qu'un numéro interne
+  // (« gid ») qu'un utilisateur ne peut pas connaître ; voir question Q2.
+
+  /**
+   * Construit la liste des mailles à partir des contours déjà présents dans
+   * le site (CARTE_DATA.base) et des libellés de quartiers (DATA.entites_quartiers).
+   * @param {{iris: Array, quartiers: Array}} base
+   * @param {string[]} entitesQuartiers  ex. ["Q1 - Bordeaux Maritime", …]
+   * @returns {Array<{id, libelle, aideCode, exempleCode, zones: Object}>}
+   *   zones : { code: { nom, geometry } }
+   */
+  function construireMailles(base, entitesQuartiers) {
+    if (!base || !Array.isArray(base.iris) || !Array.isArray(base.quartiers)) {
+      throw new Error('Contours de base absents ou mal formés');
+    }
+    const nomsQuartiers = {};
+    (entitesQuartiers || []).forEach(function (libelle) {
+      const m = /^(Q\d+)\s*-\s*(.+)$/.exec(String(libelle));
+      if (m) nomsQuartiers[m[1]] = m[2].trim();
+    });
+
+    const iris = {};
+    base.iris.forEach(function (z) {
+      iris[String(z.iris)] = { nom: z.nom, geometry: z.geometry, quartier: z.quartier };
+    });
+    const quartiers = {};
+    base.quartiers.forEach(function (z) {
+      const code = String(z.quartier);
+      // Nom manquant : on affiche le code plutôt que d'inventer un nom.
+      quartiers[code] = { nom: nomsQuartiers[code] || code, geometry: z.geometry };
+    });
+
+    return [
+      {
+        id: 'iris',
+        libelle: 'IRIS (' + Object.keys(iris).length + ' zones)',
+        aideCode: 'code IRIS à 9 chiffres',
+        exempleCode: Object.keys(iris).sort()[0],
+        zones: iris
+      },
+      {
+        id: 'quartier',
+        libelle: 'Quartiers (' + Object.keys(quartiers).length + ' quartiers officiels)',
+        aideCode: 'code du quartier, de Q1 à Q' + Object.keys(quartiers).length,
+        exempleCode: 'Q1',
+        zones: quartiers
+      }
+    ];
+  }
+
+  /**
+   * Met un code saisi dans la forme attendue par la maille :
+   * espaces et guillemets autour retirés ; pour les quartiers, « Q1 », « q1 »
+   * et « 1 » désignent tous le quartier 1 (décision 19 du journal).
+   * Renvoie la chaîne nettoyée (qui peut ne correspondre à aucune zone).
+   */
+  function normaliserCode(mailleId, brut) {
+    let c = String(brut == null ? '' : brut).trim().replace(/^"(.*)"$/, '$1').trim();
+    if (mailleId === 'quartier') {
+      const m = /^q?\s*0*(\d+)$/i.exec(c);
+      c = m ? 'Q' + m[1] : c.toUpperCase();
+    }
+    return c;
+  }
+
+  // ---------------------------------------------------------------------
+  // Brique 1 — Import CSV (décision 8 : CSV seulement)
+  // ---------------------------------------------------------------------
+  const TAILLE_MAX_OCTETS = 5 * 1024 * 1024; // 5 Mo : très au-delà de 88 lignes
+
+  /**
+   * Transforme les octets du fichier en texte. Excel enregistre souvent ses
+   * CSV en « Windows-1252 » (ancien codage des accents) et non en UTF-8 :
+   * on essaie UTF-8 strictement, sinon Windows-1252. Retire la marque BOM.
+   * @param {Uint8Array|ArrayBuffer} octets
+   */
+  function decoderTexte(octets) {
+    const o = octets instanceof Uint8Array ? octets : new Uint8Array(octets);
+    if (o.length > TAILLE_MAX_OCTETS) {
+      throw new Error('Fichier trop lourd : ' + Math.ceil(o.length / 1048576) +
+        ' Mo, maximum 5 Mo.');
+    }
+    let texte;
+    try {
+      texte = new TextDecoder('utf-8', { fatal: true }).decode(o);
+    } catch (e) {
+      texte = new TextDecoder('windows-1252').decode(o);
+    }
+    return texte.replace(/^﻿/, '');
+  }
+
+  /** Repère le séparateur (; , ou tabulation) sur la première ligne. */
+  function detecterSeparateur(texte) {
+    const ligne = String(texte).split(/\r?\n/)[0] || '';
+    let meilleur = ';', max = -1;
+    [';', '\t', ','].forEach(function (s) {
+      let n = 0, entreGuillemets = false;
+      for (const ch of ligne) {
+        if (ch === '"') entreGuillemets = !entreGuillemets;
+        else if (ch === s && !entreGuillemets) n++;
+      }
+      if (n > max) { max = n; meilleur = s; }
+    });
+    return meilleur;
+  }
+
+  /**
+   * Lit un texte CSV. Gère les guillemets ("a;b", "" pour un guillemet),
+   * les fins de ligne Windows, les lignes vides (ignorées).
+   * @returns {{separateur, colonnes: string[], lignes: Array<{numero, cellules}>}}
+   *   numero = numéro de ligne dans le fichier (l'en-tête est la ligne 1).
+   */
+  function lireCsv(texte) {
+    texte = String(texte).replace(/^﻿/, '');
+    const sep = detecterSeparateur(texte);
+    const brutes = [];
+    let cellule = '', ligne = [], guillemets = false, numero = 1, debut = 1;
+    for (let i = 0; i < texte.length; i++) {
+      const ch = texte[i];
+      if (guillemets) {
+        if (ch === '"' && texte[i + 1] === '"') { cellule += '"'; i++; }
+        else if (ch === '"') guillemets = false;
+        else { if (ch === '\n') numero++; cellule += ch; }
+      } else if (ch === '"') guillemets = true;
+      else if (ch === sep) { ligne.push(cellule); cellule = ''; }
+      else if (ch === '\r') { /* ignoré */ }
+      else if (ch === '\n') {
+        ligne.push(cellule); brutes.push({ numero: debut, cellules: ligne });
+        cellule = ''; ligne = []; numero++; debut = numero;
+      } else cellule += ch;
+    }
+    if (cellule !== '' || ligne.length) {
+      ligne.push(cellule); brutes.push({ numero: debut, cellules: ligne });
+    }
+    const nonVides = brutes.filter(function (l) {
+      return l.cellules.some(function (c) { return c.trim() !== ''; });
+    });
+    if (!nonVides.length) throw new Error('Le fichier est vide.');
+    const entete = nonVides[0];
+    return {
+      separateur: sep,
+      colonnes: entete.cellules.map(function (c, i) { return c.trim() || ('Colonne ' + (i + 1)); }),
+      lignes: nonVides.slice(1)
+    };
+  }
+
+  /**
+   * Lit un nombre écrit à la française ou à l'anglaise, sans deviner :
+   * « 1 234,5 » → 1234.5 ; « 12.5 » → 12.5 ; « 12,5 % » → 12.5.
+   * Cellule vide → null (donnée absente).
+   * Écriture ambiguë ou non numérique (« 1.234,5 », « s », « n.d. ») → NaN,
+   * signalée à l'utilisateur.
+   */
+  function lireNombre(brut) {
+    let s = String(brut == null ? '' : brut).trim();
+    if (s === '') return null;
+    s = s.replace(/[\s  ]/g, '').replace(/%$/, '');
+    if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) return NaN;
+    s = s.replace(',', '.');
+    if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s)) return NaN;
+    return Number(s);
+  }
+
+  /**
+   * Propose la colonne des codes : celle dont le plus de valeurs
+   * correspondent à une zone de la maille. -1 si aucune.
+   */
+  function proposerColonneCode(table, maille) {
+    let meilleure = -1, max = 0;
+    table.colonnes.forEach(function (_, j) {
+      let n = 0;
+      table.lignes.forEach(function (l) {
+        if (maille.zones[normaliserCode(maille.id, l.cellules[j])]) n++;
+      });
+      if (n > max) { max = n; meilleure = j; }
+    });
+    return meilleure;
+  }
+
+  /**
+   * Associe les lignes du fichier aux zones de la maille.
+   * Aucune valeur n'est devinée : tout ce qui pose problème est listé.
+   * - code inconnu → `inconnus` ;
+   * - valeur non numérique → `nonNumeriques`, zone affichée « Donnée absente » ;
+   * - même zone sur plusieurs lignes → `doublons` avec la valeur de chaque
+   *   ligne ; l'utilisateur choisit la bonne ligne (décision 18). Tant qu'il
+   *   n'a pas choisi, la zone est « Donnée absente ». Le choix est passé dans
+   *   `choixDoublons` : { code: numéro de ligne retenu } ;
+   * - zone sans ligne ou cellule vide → `absentes` (décision 10).
+   * @returns {{valeurs: Object, inconnus, nonNumeriques, absentes: string[],
+   *   doublons: Array<{code, choisie: number|null, lignes: Array<{ligne, valeur}>}>}}
+   */
+  function associer(table, maille, colCode, colValeur, choixDoublons) {
+    choixDoublons = choixDoublons || {};
+    const parCode = {};
+    const inconnus = [], nonNumeriques = [];
+    table.lignes.forEach(function (l) {
+      const brut = l.cellules[colCode];
+      const code = normaliserCode(maille.id, brut);
+      if (code === '') { inconnus.push({ ligne: l.numero, code: '(vide)' }); return; }
+      if (!maille.zones[code]) { inconnus.push({ ligne: l.numero, code: String(brut).trim() }); return; }
+      (parCode[code] = parCode[code] || []).push(l);
+    });
+    const valeurs = {}, doublons = [];
+    Object.keys(parCode).forEach(function (code) {
+      let l = parCode[code][0];
+      if (parCode[code].length > 1) {
+        const choisie = parCode[code].find(function (x) { return x.numero === choixDoublons[code]; });
+        doublons.push({
+          code: code,
+          choisie: choisie ? choisie.numero : null,
+          lignes: parCode[code].map(function (x) {
+            return { ligne: x.numero, valeur: String(x.cellules[colValeur] == null ? '' : x.cellules[colValeur]).trim() };
+          })
+        });
+        if (!choisie) return;
+        l = choisie;
+      }
+      const v = lireNombre(l.cellules[colValeur]);
+      if (v === null) return;
+      if (Number.isNaN(v)) {
+        nonNumeriques.push({ ligne: l.numero, code: code, valeur: String(l.cellules[colValeur]).trim() });
+        return;
+      }
+      valeurs[code] = v;
+    });
+    const absentes = Object.keys(maille.zones).filter(function (c) { return !(c in valeurs); }).sort();
+    return { valeurs: valeurs, inconnus: inconnus, nonNumeriques: nonNumeriques, doublons: doublons, absentes: absentes };
+  }
+
+  // ---------------------------------------------------------------------
+  // Brique 3 — Classes, légende et dessin de la carte (SVG)
+  // ---------------------------------------------------------------------
+  const NB_CLASSES_AUTO = 5;           // décision 4
+  const NB_SEUILS_MAX = 6;             // 7 couleurs au plus, lisibles
+  // Rampe bleue du site (variables --ci-seq-*), du plus clair au plus foncé.
+  const RAMPE = ['#b7d3f6', '#86b6ef', '#6da7ec', '#3987e5', '#2a78d6', '#1c5cab', '#0d366b'];
+
+  /**
+   * Lit les seuils saisis, séparés par « ; » (la virgule sert aux décimales).
+   * '' → null (classes automatiques). Erreur explicite si un seuil n'est pas
+   * un nombre, si l'ordre n'est pas croissant, ou s'il y en a trop.
+   */
+  function lireSeuils(texte) {
+    const morceaux = String(texte == null ? '' : texte).split(/[;\n]/)
+      .map(function (s) { return s.trim(); }).filter(function (s) { return s !== ''; });
+    if (!morceaux.length) return null;
+    if (morceaux.length > NB_SEUILS_MAX) {
+      throw new Error(NB_SEUILS_MAX + ' seuils au maximum (' + morceaux.length + ' saisis).');
+    }
+    const seuils = morceaux.map(function (m) {
+      const v = lireNombre(m);
+      if (v === null || Number.isNaN(v)) throw new Error('Seuil non reconnu comme un nombre : « ' + m + ' ».');
+      return v;
+    });
+    for (let i = 1; i < seuils.length; i++) {
+      if (!(seuils[i] > seuils[i - 1])) throw new Error('Les seuils doivent être rangés du plus petit au plus grand, sans doublon.');
+    }
+    return seuils;
+  }
+
+  /** Bornes de 5 classes de même effectif : même calcul que les cartes du site (ciQuantiles). */
+  function bornesParEffectif(valeurs, nClasses) {
+    const tri = valeurs.slice().sort(function (a, b) { return a - b; });
+    const b = [];
+    for (let i = 1; i < nClasses; i++) {
+      b.push(tri[Math.min(Math.floor((i / nClasses) * tri.length), tri.length - 1)]);
+    }
+    return b;
+  }
+
+  /** Numéro de classe : une valeur égale à une borne va dans la classe du dessous (comme le site). */
+  function classer(v, bornes) {
+    for (let i = 0; i < bornes.length; i++) if (v <= bornes[i]) return i;
+    return bornes.length;
+  }
+
+  /** n couleurs prises dans la rampe ; pour 5, les mêmes paliers que le site. */
+  function couleurs(n) {
+    if (n === 5) return [RAMPE[0], RAMPE[1], RAMPE[3], RAMPE[5], RAMPE[6]];
+    if (n === 1) return [RAMPE[3]];
+    const c = [];
+    for (let i = 0; i < n; i++) c.push(RAMPE[Math.round(i * (RAMPE.length - 1) / (n - 1))]);
+    return c;
+  }
+
+  function formaterNombre(v, unite) {
+    const t = v.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    return unite ? t + ' ' + unite : t;
+  }
+
+  /**
+   * Calcule les classes et la légende.
+   * - Seuils saisis : toutes les classes, libellées par leurs bornes.
+   * - Sinon : 5 classes de même effectif ; une ligne par classe utilisée,
+   *   libellée par le minimum et le maximum observés (comme le site).
+   * @returns {{bornes, couleurs, classeDe: Object, legende: Array<{couleur, libelle, nb}>, mode}}
+   */
+  function calculerClasses(valeurs, seuils, unite) {
+    const codes = Object.keys(valeurs);
+    const vals = codes.map(function (c) { return valeurs[c]; });
+    const mode = seuils ? 'seuils' : 'effectif';
+    const bornes = seuils ? seuils.slice() : bornesParEffectif(vals, NB_CLASSES_AUTO);
+    const nb = bornes.length + 1;
+    const pal = couleurs(nb);
+    const classeDe = {};
+    const stats = [];
+    for (let i = 0; i < nb; i++) stats.push({ nb: 0, min: Infinity, max: -Infinity });
+    codes.forEach(function (c) {
+      const k = classer(valeurs[c], bornes);
+      classeDe[c] = k;
+      stats[k].nb++;
+      stats[k].min = Math.min(stats[k].min, valeurs[c]);
+      stats[k].max = Math.max(stats[k].max, valeurs[c]);
+    });
+    const f = function (v) { return formaterNombre(v, unite); };
+    const legende = [];
+    stats.forEach(function (s, k) {
+      let libelle;
+      if (mode === 'seuils') {
+        if (k === 0) libelle = 'jusqu’à ' + f(bornes[0]);
+        else if (k === nb - 1) libelle = 'plus de ' + f(bornes[k - 1]);
+        else libelle = 'plus de ' + f(bornes[k - 1]) + ' à ' + f(bornes[k]);
+      } else {
+        if (!s.nb) return; // classe vide omise (comme le site)
+        libelle = s.min === s.max ? f(s.min) : f(s.min) + ' – ' + f(s.max);
+      }
+      legende.push({ couleur: pal[k], libelle: libelle, nb: s.nb });
+    });
+    return { bornes: bornes, couleurs: pal, classeDe: classeDe, legende: legende, mode: mode };
+  }
+
+  /** Échappe un texte saisi avant de l'insérer dans du SVG ou du HTML. */
+  function echapper(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function parcourirCoordonnees(geom, f) {
+    const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+    polys.forEach(function (p) { p.forEach(function (anneau) { anneau.forEach(f); }); });
+  }
+
+  /** Projection simple lon/lat → x/y, même calcul que le site (ciProject), centrée. */
+  function creerProjection(zones, taille, marge) {
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    Object.keys(zones).forEach(function (c) {
+      parcourirCoordonnees(zones[c].geometry, function (pt) {
+        minLon = Math.min(minLon, pt[0]); maxLon = Math.max(maxLon, pt[0]);
+        minLat = Math.min(minLat, pt[1]); maxLat = Math.max(maxLat, pt[1]);
+      });
+    });
+    const cosLat = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
+    const l = (maxLon - minLon) * cosLat, h = maxLat - minLat;
+    const echelle = (taille - 2 * marge) / Math.max(l, h);
+    // Centrage dans le carré (le site, lui, cale la carte à gauche).
+    const dx = (taille - l * echelle) / 2, dy = (taille - h * echelle) / 2;
+    return function (lon, lat) {
+      return [dx + (lon - minLon) * cosLat * echelle, taille - dy - (lat - minLat) * echelle];
+    };
+  }
+
+  function cheminSvg(geom, proj) {
+    const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+    return polys.map(function (p) {
+      return p.map(function (anneau) {
+        return anneau.map(function (pt, i) {
+          const xy = proj(pt[0], pt[1]);
+          return (i ? 'L' : 'M') + xy[0].toFixed(1) + ',' + xy[1].toFixed(1);
+        }).join('') + 'Z';
+      }).join('');
+    }).join('');
+  }
+
+  /** Coupe un texte long en lignes d'au plus `max` caractères (titres SVG). */
+  function couperTexte(t, max) {
+    const mots = String(t).split(/\s+/), lignes = [];
+    let l = '';
+    mots.forEach(function (m) {
+      if (l && (l + ' ' + m).length > max) { lignes.push(l); l = m; } else l = l ? l + ' ' + m : m;
+    });
+    if (l) lignes.push(l);
+    return lignes;
+  }
+
+  /**
+   * Dessine la carte complète (titre, zones, légende, source) en SVG
+   * autonome : le même dessin sert à l'écran et au téléchargement.
+   * @param {Object} o  { maille, valeurs, classes, titre, indicateur, unite,
+   *                      source, millesime, licence, compact }
+   *   compact : carte seule (affichage à l'écran) ; sinon image complète.
+   * @returns {string} le code SVG
+   */
+  function construireSvg(o) {
+    const CARTE = 560, LEG = 260, L = CARTE + LEG, PAD = 16;
+    const lignesTitre = couperTexte(o.titre || '', 60);
+    const hTitre = PAD + lignesTitre.length * 26 + 8;
+    const proj = creerProjection(o.maille.zones, CARTE, 14);
+    const absent = 'Donnée absente';
+    let zones = '';
+    Object.keys(o.maille.zones).sort().forEach(function (code) {
+      const z = o.maille.zones[code];
+      const a = code in o.valeurs;
+      const fill = a ? o.classes.couleurs[o.classes.classeDe[code]] : 'url(#cc-hachures)';
+      const info = z.nom + (z.nom !== code ? ' (' + code + ')' : '') + ' : ' +
+        (a ? formaterNombre(o.valeurs[code], o.unite) : absent);
+      zones += '<path d="' + cheminSvg(z.geometry, proj) + '" fill="' + fill +
+        '" stroke="#ffffff" stroke-width="0.8" data-code="' + echapper(code) + '"><title>' +
+        echapper(info) + '</title></path>';
+    });
+    if (o.compact) {
+      // Version écran : la carte seule ; titre, légende et source sont
+      // affichés en HTML à côté (lisibles sur téléphone).
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + CARTE + ' ' + CARTE +
+        '" role="img" aria-label="' + echapper('Carte : ' + (o.indicateur || '') + '. Valeurs détaillées dans le tableau sous la carte.') + '">' +
+        '<defs><pattern id="cc-hachures" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+        '<rect width="6" height="6" fill="#ded9d0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a9185" stroke-width="2"/></pattern></defs>' +
+        zones + '</svg>';
+    }
+    let leg = '<text x="0" y="0" font-size="14" font-weight="700" fill="#241A1D">' +
+      echapper(o.indicateur || '') + '</text>';
+    let y = 14;
+    o.classes.legende.forEach(function (l) {
+      y += 26;
+      leg += '<rect x="0" y="' + (y - 13) + '" width="22" height="16" fill="' + l.couleur + '" stroke="#6B5A5E" stroke-width="0.5"/>' +
+        '<text x="30" y="' + y + '" font-size="13" fill="#241A1D">' + echapper(l.libelle) +
+        ' (' + l.nb + ' zone' + (l.nb > 1 ? 's' : '') + ')</text>';
+    });
+    const nbAbsentes = Object.keys(o.maille.zones).filter(function (c) { return !(c in o.valeurs); }).length;
+    if (nbAbsentes) {
+      y += 26;
+      leg += '<rect x="0" y="' + (y - 13) + '" width="22" height="16" fill="url(#cc-hachures)" stroke="#6B5A5E" stroke-width="0.5"/>' +
+        '<text x="30" y="' + y + '" font-size="13" fill="#241A1D">' + absent + ' (' + nbAbsentes + ')</text>';
+    }
+    y += 26;
+    leg += '<text x="0" y="' + y + '" font-size="11.5" fill="#6B5A5E">' +
+      (o.classes.mode === 'seuils' ? 'Classes : seuils choisis' : 'Classes de même effectif') + '</text>';
+    const piedLignes = couperTexte(
+      ['Source : ' + (o.source || 'non précisée'), o.millesime ? 'Date : ' + o.millesime : '',
+        o.licence ? 'Licence : ' + o.licence : ''].filter(Boolean).join(' · '), 110);
+    const H = hTitre + CARTE + piedLignes.length * 16 + PAD;
+    let svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + L + ' ' + H + '" width="' + L + '" height="' + H +
+      '" role="img" aria-labelledby="cc-svg-titre" font-family="Segoe UI, Arial, sans-serif">' +
+      '<title id="cc-svg-titre">' + echapper((o.titre || '') + ' — ' + (o.indicateur || '')) + '</title>' +
+      '<defs><pattern id="cc-hachures" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
+      '<rect width="6" height="6" fill="#ded9d0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a9185" stroke-width="2"/></pattern></defs>' +
+      '<rect width="100%" height="100%" fill="#ffffff"/>';
+    lignesTitre.forEach(function (t, i) {
+      svg += '<text x="' + PAD + '" y="' + (PAD + 20 + i * 26) + '" font-size="21" font-weight="700" fill="#241A1D">' + echapper(t) + '</text>';
+    });
+    svg += '<g transform="translate(0,' + hTitre + ')">' + zones + '</g>' +
+      '<g transform="translate(' + (CARTE + 4) + ',' + (hTitre + 30) + ')">' + leg + '</g>';
+    piedLignes.forEach(function (t, i) {
+      svg += '<text x="' + PAD + '" y="' + (hTitre + CARTE + 12 + i * 16) + '" font-size="12" fill="#6B5A5E">' + echapper(t) + '</text>';
+    });
+    return svg + '</svg>';
+  }
+
+  /** Lignes du tableau des valeurs (alternative textuelle à la carte, RGAA). */
+  function tableauValeurs(maille, valeurs) {
+    return Object.keys(maille.zones).map(function (code) {
+      return { code: code, nom: maille.zones[code].nom, valeur: code in valeurs ? valeurs[code] : null };
+    }).sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
+  }
+
+  // ---------------------------------------------------------------------
+  // Brique 4 — Proposer une carte (décisions 7, 9, 12 et 16)
+  // ---------------------------------------------------------------------
+  const FORMAT_PROPOSITION = 'createur-carte-bordeaux';
+  const VERSION_PROPOSITION = 1;
+  const MESSAGE_ENVOI = 'Envoyer par mail à la mission data/IA de la Ville de Bordeaux le fichier joint ; ' +
+    'seules les demandes internes et confirmées seront acceptées.';
+  // Champs obligatoires pour proposer une carte (décision 9).
+  const CHAMPS_PROPOSITION = [
+    { cle: 'titre', libelle: 'Titre de la carte' },
+    { cle: 'indicateur', libelle: 'Nom des données' },
+    { cle: 'source', libelle: 'Source des données' },
+    { cle: 'millesime', libelle: 'Date ou millésime des données' },
+    { cle: 'licence', libelle: 'Licence des données' }
+  ];
+
+  /** Liste des champs obligatoires vides, dans l'ordre du formulaire. */
+  function champsManquantsProposition(r) {
+    return CHAMPS_PROPOSITION.filter(function (c) {
+      const v = String(r[c.cle] == null ? '' : r[c.cle]).trim();
+      // « Autre » sans précision ne dit rien de la licence.
+      return v === '' || (c.cle === 'licence' && v === 'Autre');
+    });
+  }
+
+  /**
+   * Fichier de proposition : réglages + valeurs, rien d'autre (pas de nom de
+   * personne, pas d'adresse). Le porteur le recharge pour vérifier la carte.
+   */
+  function creerProposition(c, nomFichier, date) {
+    const manquants = champsManquantsProposition(c);
+    if (manquants.length) {
+      throw new Error('Champs à compléter : ' + manquants.map(function (m) { return m.libelle; }).join(', ') + '.');
+    }
+    const valeurs = {};
+    Object.keys(c.valeurs).sort().forEach(function (k) { valeurs[k] = c.valeurs[k]; });
+    return {
+      format: FORMAT_PROPOSITION,
+      version: VERSION_PROPOSITION,
+      creeLe: date,
+      fichierSource: nomFichier || '',
+      maille: c.maille.id,
+      titre: c.titre,
+      indicateur: c.indicateur,
+      unite: c.unite || '',
+      seuils: c.classes.mode === 'seuils' ? c.classes.bornes.slice() : null,
+      source: c.source,
+      millesime: c.millesime,
+      licence: c.licence,
+      valeurs: valeurs
+    };
+  }
+
+  /**
+   * Relit un fichier de proposition (pour la brique 5) et le contrôle :
+   * format, maille connue, codes connus, valeurs numériques, champs remplis.
+   * Erreur explicite au moindre écart : on ne publie rien de douteux.
+   */
+  function lireProposition(texte, mailles) {
+    let p;
+    try { p = JSON.parse(texte); } catch (e) { throw new Error('Ce fichier n’est pas un fichier de proposition lisible.'); }
+    if (!p || p.format !== FORMAT_PROPOSITION) throw new Error('Ce fichier n’est pas une proposition du créateur de carte.');
+    if (p.version !== VERSION_PROPOSITION) throw new Error('Version de proposition non prise en charge : ' + p.version + '.');
+    const maille = mailles.filter(function (m) { return m.id === p.maille; })[0];
+    if (!maille) throw new Error('Découpage inconnu : « ' + p.maille + ' ».');
+    if (!p.valeurs || typeof p.valeurs !== 'object' || Array.isArray(p.valeurs)) throw new Error('Valeurs absentes.');
+    Object.keys(p.valeurs).forEach(function (code) {
+      if (!maille.zones[code]) throw new Error('Code de zone inconnu : « ' + code + ' ».');
+      if (typeof p.valeurs[code] !== 'number' || !isFinite(p.valeurs[code])) throw new Error('Valeur non numérique pour « ' + code + ' ».');
+    });
+    if (!Object.keys(p.valeurs).length) throw new Error('Aucune valeur.');
+    ['titre', 'indicateur', 'unite', 'source', 'millesime', 'licence'].forEach(function (k) {
+      if (p[k] != null && typeof p[k] !== 'string') throw new Error('Champ « ' + k + ' » mal formé.');
+    });
+    const manquants = champsManquantsProposition(p);
+    if (manquants.length) throw new Error('Champs vides : ' + manquants.map(function (m) { return m.libelle; }).join(', ') + '.');
+    let seuils = null;
+    if (p.seuils != null) {
+      if (!Array.isArray(p.seuils)) throw new Error('Seuils mal formés.');
+      seuils = lireSeuils(p.seuils.join(' ; ').replace(/\./g, ','));
+    }
+    return {
+      maille: maille, valeurs: p.valeurs, titre: p.titre, indicateur: p.indicateur, unite: p.unite || '',
+      source: p.source, millesime: p.millesime, licence: p.licence, creeLe: p.creeLe, fichierSource: p.fichierSource,
+      classes: calculerClasses(p.valeurs, seuils, p.unite || '')
+    };
+  }
+
+  return {
+    MESSAGE_ENVOI: MESSAGE_ENVOI,
+    champsManquantsProposition: champsManquantsProposition,
+    creerProposition: creerProposition,
+    lireProposition: lireProposition,
+    NB_SEUILS_MAX: NB_SEUILS_MAX,
+    lireSeuils: lireSeuils,
+    calculerClasses: calculerClasses,
+    classer: classer,
+    couleurs: couleurs,
+    formaterNombre: formaterNombre,
+    echapper: echapper,
+    construireSvg: construireSvg,
+    tableauValeurs: tableauValeurs,
+    construireMailles: construireMailles,
+    normaliserCode: normaliserCode,
+    TAILLE_MAX_OCTETS: TAILLE_MAX_OCTETS,
+    decoderTexte: decoderTexte,
+    detecterSeparateur: detecterSeparateur,
+    lireCsv: lireCsv,
+    lireNombre: lireNombre,
+    proposerColonneCode: proposerColonneCode,
+    associer: associer
+  };
+}));
+
+/*
+ * Créateur de carte — affichage (brique 2 : boîte de dialogue ; brique 3 :
+ * carte, légende, tableau, téléchargement ; brique 4 : proposer la carte). La logique testée est dans
+ * createur_carte.js (objet CreateurCarte).
+ *
+ * Accessibilité (RGAA AA, pré-audit technique) : boîte de dialogue native
+ * <dialog> (focus gardé dedans, touche Échap), chaque champ a une étiquette,
+ * erreurs reliées au champ (aria-describedby) et annoncées, rapport d'import
+ * annoncé (aria-live), tableau des valeurs en alternative à la carte.
+ *
+ * Aucune donnée importée ne quitte le navigateur (décision 1).
+ */
+(function () {
+  'use strict';
+  const CC = window.CreateurCarte;
+  const esc = CC.echapper;
+  const LICENCES = ['Licence Ouverte 2.0 (Etalab)', 'ODbL', 'Autre', 'Je ne sais pas'];
+
+  // État de la séance (en mémoire seulement : rien n'est enregistré).
+  const etat = { mailles: null, table: null, nomFichier: '', choixDoublons: {}, resultat: null, carte: null };
+
+  function $(id) { return document.getElementById(id); }
+
+  // ------------------------------------------------------------------
+  // Boîte de dialogue
+  // ------------------------------------------------------------------
+  function htmlDialogue() {
+    const optLicences = LICENCES.map(function (l) {
+      return '<option value="' + esc(l) + '">' + esc(l) + '</option>';
+    }).join('');
+    return '' +
+      '<dialog id="cc-dialog" class="cc-dialog" aria-labelledby="cc-dialog-titre">' +
+      '<form id="cc-form" method="dialog" novalidate>' +
+      '<div class="cc-dialog-entete"><h2 id="cc-dialog-titre">Créer ma carte</h2>' +
+      '<button type="button" class="cc-fermer" id="cc-fermer" aria-label="Fermer la boîte de dialogue">×</button></div>' +
+      '<p class="cc-intro">Votre fichier reste sur votre ordinateur : rien n’est envoyé sur Internet. Les champs marqués <span aria-hidden="true">*</span><span class="cc-sr">d’un astérisque</span> sont obligatoires.</p>' +
+
+      '<fieldset><legend>1. Le découpage et le fichier</legend>' +
+      '<label for="cc-maille">Découpage géographique de vos données <span aria-hidden="true">*</span></label>' +
+      '<select id="cc-maille" aria-describedby="cc-maille-aide"></select>' +
+      '<p class="cc-aide" id="cc-maille-aide"></p>' +
+      '<p class="cc-aide"><button type="button" class="cc-lien" id="cc-modele">Télécharger un modèle de fichier pour ce découpage</button></p>' +
+      '<label for="cc-fichier">Fichier CSV <span aria-hidden="true">*</span></label>' +
+      '<input type="file" id="cc-fichier" accept=".csv,text/csv" aria-describedby="cc-fichier-aide cc-fichier-err" required>' +
+      '<p class="cc-aide" id="cc-fichier-aide">Format CSV uniquement, 5 Mo au plus. Première ligne : les titres des colonnes.</p>' +
+      '<p class="cc-erreur" id="cc-fichier-err" role="alert"></p>' +
+      '<details class="cc-modeemploi"><summary>Mon fichier est un tableau Excel : comment le transformer en CSV ?</summary><ol>' +
+      '<li>Ouvrez votre tableau dans Excel.</li>' +
+      '<li>Vérifiez que la première ligne contient les titres des colonnes.</li>' +
+      '<li>Une colonne doit contenir le code de chaque zone, une autre la valeur (un nombre).</li>' +
+      '<li>Cliquez sur <strong>Fichier</strong>, puis <strong>Enregistrer sous</strong> (ou <strong>Enregistrer une copie</strong>).</li>' +
+      '<li>Dans <strong>Type</strong>, choisissez <strong>CSV UTF-8 (délimité par des virgules)</strong> ou <strong>CSV (séparateur : point-virgule)</strong>.</li>' +
+      '<li>Cliquez sur <strong>Enregistrer</strong>. Si Excel prévient que seule la feuille active sera enregistrée, acceptez : c’est normal.</li>' +
+      '<li>Revenez ici et choisissez ce fichier .csv.</li></ol></details>' +
+      '<div id="cc-colonnes" hidden>' +
+      '<label for="cc-col-code">Colonne qui contient les codes des zones <span aria-hidden="true">*</span></label><select id="cc-col-code"></select>' +
+      '<label for="cc-col-valeur">Colonne qui contient les valeurs à cartographier <span aria-hidden="true">*</span></label><select id="cc-col-valeur"></select>' +
+      '</div>' +
+      '<div id="cc-rapport" class="cc-rapport" aria-live="polite"></div>' +
+      '</fieldset>' +
+
+      '<fieldset><legend>2. Les textes de la carte</legend>' +
+      '<label for="cc-titre">Titre de la carte <span aria-hidden="true">*</span></label>' +
+      '<input type="text" id="cc-titre" maxlength="150" aria-describedby="cc-titre-err" required>' +
+      '<p class="cc-erreur" id="cc-titre-err" role="alert"></p>' +
+      '<label for="cc-indicateur">Nom des données (ce que mesurent les valeurs) <span aria-hidden="true">*</span></label>' +
+      '<input type="text" id="cc-indicateur" maxlength="150" aria-describedby="cc-indicateur-aide cc-indicateur-err" required>' +
+      '<p class="cc-aide" id="cc-indicateur-aide">Exemple : Part des ménages d’une personne.</p>' +
+      '<p class="cc-erreur" id="cc-indicateur-err" role="alert"></p>' +
+      '<label for="cc-unite">Unité (facultatif)</label>' +
+      '<input type="text" id="cc-unite" maxlength="30" aria-describedby="cc-unite-aide">' +
+      '<p class="cc-aide" id="cc-unite-aide">Exemples : %, habitants, €.</p>' +
+      '<label for="cc-seuils">Seuils des classes (facultatif)</label>' +
+      '<input type="text" id="cc-seuils" inputmode="decimal" aria-describedby="cc-seuils-aide cc-seuils-err">' +
+      '<p class="cc-aide" id="cc-seuils-aide">Séparez les seuils par un point-virgule, du plus petit au plus grand, ' + CC.NB_SEUILS_MAX + ' au plus. Exemple : 10 ; 20 ; 30. ' +
+      'Une valeur égale à un seuil va dans la classe du dessous. Sans seuil, la carte utilise 5 classes contenant à peu près le même nombre de zones.</p>' +
+      '<p class="cc-erreur" id="cc-seuils-err" role="alert"></p>' +
+      '</fieldset>' +
+
+      '<fieldset><legend>3. L’origine des données</legend>' +
+      '<p class="cc-aide">Facultatif pour créer la carte ; obligatoire pour la proposer à la mission data/IA.</p>' +
+      '<label for="cc-source">Source des données</label>' +
+      '<input type="text" id="cc-source" maxlength="200" aria-describedby="cc-source-aide cc-source-err">' +
+      '<p class="cc-aide" id="cc-source-aide">Exemple : Insee, recensement de la population.</p>' +
+      '<p class="cc-erreur" id="cc-source-err" role="alert"></p>' +
+      '<label for="cc-millesime">Date ou millésime des données</label>' +
+      '<input type="text" id="cc-millesime" maxlength="40" aria-describedby="cc-millesime-aide cc-millesime-err">' +
+      '<p class="cc-aide" id="cc-millesime-aide">Exemple : 2022.</p>' +
+      '<p class="cc-erreur" id="cc-millesime-err" role="alert"></p>' +
+      '<label for="cc-licence">Licence des données</label>' +
+      '<select id="cc-licence" aria-describedby="cc-licence-aide cc-licence-err"><option value="">— Choisir —</option>' + optLicences + '</select>' +
+      '<p class="cc-aide" id="cc-licence-aide">La licence dit ce que chacun a le droit de faire avec les données. La plupart des données publiques françaises sont sous Licence Ouverte 2.0.</p>' +
+      '<p class="cc-erreur" id="cc-licence-err" role="alert"></p>' +
+      '<div id="cc-licence-autre-bloc" hidden><label for="cc-licence-autre">Précisez la licence</label>' +
+      '<input type="text" id="cc-licence-autre" maxlength="100" aria-describedby="cc-licence-autre-err">' +
+      '<p class="cc-erreur" id="cc-licence-autre-err" role="alert"></p></div>' +
+      '</fieldset>' +
+
+      '<div class="cc-actions"><button type="submit" class="cc-bouton cc-principal" id="cc-generer">Générer la carte</button>' +
+      '<button type="button" class="cc-bouton" id="cc-annuler">Annuler</button></div>' +
+      '</form></dialog>';
+  }
+
+  function installerDialogue() {
+    if ($('cc-dialog')) return;
+    document.body.insertAdjacentHTML('beforeend', htmlDialogue());
+    const maille = $('cc-maille');
+    etat.mailles.forEach(function (m) {
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.libelle;
+      maille.appendChild(o);
+    });
+    // Par défaut : les quartiers (choix par défaut des cartes du site).
+    maille.value = 'quartier';
+    majAideMaille();
+    maille.addEventListener('change', function () { majAideMaille(); proposerColonnes(); majRapport(); });
+    $('cc-modele').addEventListener('click', telechargerModele);
+    $('cc-fichier').addEventListener('change', lireFichier);
+    $('cc-col-code').addEventListener('change', function () { etat.choixDoublons = {}; majRapport(); });
+    $('cc-col-valeur').addEventListener('change', function () { etat.choixDoublons = {}; majRapport(); });
+    $('cc-licence').addEventListener('change', function () { $('cc-licence-autre-bloc').hidden = $('cc-licence').value !== 'Autre'; });
+    $('cc-fermer').addEventListener('click', function () { $('cc-dialog').close(); });
+    $('cc-annuler').addEventListener('click', function () { $('cc-dialog').close(); });
+    $('cc-form').addEventListener('submit', generer);
+    // Un message d'erreur disparaît dès que l'utilisateur modifie le champ.
+    ['cc-titre', 'cc-indicateur', 'cc-seuils', 'cc-source', 'cc-millesime', 'cc-licence', 'cc-licence-autre'].forEach(function (id) {
+      $(id).addEventListener(id === 'cc-licence' ? 'change' : 'input', function () { erreurChamp(id, ''); });
+    });
+    $('cc-rapport').addEventListener('change', function (e) {
+      if (e.target.name && e.target.name.indexOf('cc-doublon-') === 0) {
+        const code = e.target.name.slice('cc-doublon-'.length);
+        if (e.target.value === '') delete etat.choixDoublons[code];
+        else etat.choixDoublons[code] = Number(e.target.value);
+        majRapport(true);
+      }
+    });
+  }
+
+  function mailleActive() {
+    const id = $('cc-maille').value;
+    return etat.mailles.filter(function (m) { return m.id === id; })[0];
+  }
+
+  function majAideMaille() {
+    const m = mailleActive();
+    $('cc-maille-aide').textContent = 'Codes attendus : ' + m.aideCode + ' (exemple : ' + m.exempleCode + ').' +
+      (m.id === 'quartier' ? ' « Q1 », « q1 » et « 1 » désignent le même quartier.' : '');
+  }
+
+  function telechargerModele() {
+    const m = mailleActive();
+    const lignes = ['code;nom;valeur'].concat(Object.keys(m.zones).sort().map(function (c) {
+      return c + ';"' + m.zones[c].nom.replace(/"/g, '""') + '";';
+    }));
+    telecharger(new Blob(['﻿' + lignes.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' }),
+      'modele-' + m.id + '-bordeaux.csv');
+  }
+
+  function erreurChamp(id, message) {
+    const p = $(id + '-err');
+    p.textContent = message || '';
+    $(id).setAttribute('aria-invalid', message ? 'true' : 'false');
+  }
+
+  function lireFichier() {
+    const f = $('cc-fichier').files[0];
+    etat.table = null; etat.choixDoublons = {};
+    erreurChamp('cc-fichier', '');
+    $('cc-colonnes').hidden = true;
+    $('cc-rapport').innerHTML = '';
+    if (!f) return;
+    if (f.size > CC.TAILLE_MAX_OCTETS) {
+      erreurChamp('cc-fichier', 'Fichier trop lourd (' + Math.ceil(f.size / 1048576) + ' Mo) : 5 Mo au plus.');
+      return;
+    }
+    if (!/\.csv$/i.test(f.name)) {
+      erreurChamp('cc-fichier', 'Ce fichier n’est pas un CSV. Voir ci-dessous comment transformer un tableau Excel en CSV.');
+      return;
+    }
+    f.arrayBuffer().then(function (octets) {
+      etat.table = CC.lireCsv(CC.decoderTexte(octets));
+      etat.nomFichier = f.name;
+      if (etat.table.colonnes.length < 2) {
+        etat.table = null;
+        erreurChamp('cc-fichier', 'Le fichier doit contenir au moins deux colonnes : les codes et les valeurs.');
+        return;
+      }
+      ['cc-col-code', 'cc-col-valeur'].forEach(function (id) {
+        $(id).innerHTML = etat.table.colonnes.map(function (c, i) {
+          return '<option value="' + i + '">' + esc(c) + '</option>';
+        }).join('');
+      });
+      $('cc-colonnes').hidden = false;
+      proposerColonnes();
+      majRapport();
+    }).catch(function (e) {
+      erreurChamp('cc-fichier', 'Lecture impossible : ' + e.message);
+    });
+  }
+
+  function proposerColonnes() {
+    if (!etat.table) return;
+    const j = CC.proposerColonneCode(etat.table, mailleActive());
+    const code = j >= 0 ? j : 0;
+    $('cc-col-code').value = String(code);
+    // Valeurs : la première colonne, après celle des codes, dont les cellules
+    // sont surtout des nombres.
+    let val = -1;
+    for (let k = 0; k < etat.table.colonnes.length && val < 0; k++) {
+      if (k === code) continue;
+      const n = etat.table.lignes.filter(function (l) {
+        const v = CC.lireNombre(l.cellules[k]);
+        return v !== null && !Number.isNaN(v);
+      }).length;
+      if (n >= etat.table.lignes.length / 2) val = k;
+    }
+    $('cc-col-valeur').value = String(val >= 0 ? val : (code === 0 ? 1 : 0));
+  }
+
+  function listeProblemes(titre, items) {
+    if (!items.length) return '';
+    const max = 20;
+    return '<p class="cc-rapport-titre">' + esc(titre) + ' (' + items.length + ')</p><ul>' +
+      items.slice(0, max).map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') +
+      (items.length > max ? '<li>… et ' + (items.length - max) + ' autre(s).</li>' : '') + '</ul>';
+  }
+
+  function majRapport(garderFocus) {
+    const zone = $('cc-rapport');
+    if (!etat.table) { zone.innerHTML = ''; etat.resultat = null; return; }
+    const m = mailleActive();
+    const r = CC.associer(etat.table, m, Number($('cc-col-code').value), Number($('cc-col-valeur').value), etat.choixDoublons);
+    etat.resultat = r;
+    const nbZones = Object.keys(m.zones).length, nbVal = Object.keys(r.valeurs).length;
+    let h = '<p class="cc-rapport-bilan"><strong>' + nbVal + ' zone' + (nbVal > 1 ? 's' : '') + ' sur ' + nbZones +
+      '</strong> ' + (nbVal > 1 ? 'ont' : 'a') + ' une valeur.</p>';
+    if (!nbVal) h += '<p class="cc-erreur">Aucune valeur n’a pu être associée à une zone. Vérifiez le découpage choisi et les colonnes.</p>';
+    if (r.doublons.length) {
+      h += '<p class="cc-rapport-titre">Zones présentes sur plusieurs lignes (' + r.doublons.length + ') : choisissez la bonne ligne</p>';
+      r.doublons.forEach(function (d) {
+        const nom = m.zones[d.code].nom;
+        h += '<fieldset class="cc-doublon"><legend>' + esc(nom + (nom !== d.code ? ' (' + d.code + ')' : '')) + '</legend>';
+        d.lignes.forEach(function (l) {
+          const id = 'cc-db-' + d.code + '-' + l.ligne;
+          h += '<div><input type="radio" name="cc-doublon-' + esc(d.code) + '" id="' + esc(id) + '" value="' + l.ligne + '"' +
+            (d.choisie === l.ligne ? ' checked' : '') + '> <label for="' + esc(id) + '">Ligne ' + l.ligne + ' : ' + esc(l.valeur || '(vide)') + '</label></div>';
+        });
+        const idAucune = 'cc-db-' + d.code + '-aucune';
+        h += '<div><input type="radio" name="cc-doublon-' + esc(d.code) + '" id="' + esc(idAucune) + '" value=""' +
+          (d.choisie === null ? ' checked' : '') + '> <label for="' + esc(idAucune) + '">Aucune : « Donnée absente »</label></div></fieldset>';
+      });
+    }
+    h += listeProblemes('Codes non reconnus, lignes ignorées', r.inconnus.map(function (x) { return 'Ligne ' + x.ligne + ' : « ' + x.code + ' »'; }));
+    h += listeProblemes('Valeurs qui ne sont pas des nombres', r.nonNumeriques.map(function (x) { return 'Ligne ' + x.ligne + ' (' + x.code + ') : « ' + x.valeur + ' »'; }));
+    h += listeProblemes('Zones sans valeur, affichées « Donnée absente »', r.absentes.map(function (c) {
+      const nom = m.zones[c].nom; return nom !== c ? nom + ' (' + c + ')' : c;
+    }));
+    // Après un choix de doublon, on ne réécrit pas les boutons radio sous le
+    // focus : seul le bilan change, le reste est identique.
+    const focus = garderFocus && document.activeElement && document.activeElement.id;
+    zone.innerHTML = h;
+    if (focus && $(focus)) $(focus).focus();
+  }
+
+  function generer(e) {
+    e.preventDefault();
+    let premier = null;
+    function exiger(id, message) {
+      const ok = $(id).value.trim() !== '';
+      erreurChamp(id, ok ? '' : message);
+      if (!ok && !premier) premier = id;
+    }
+    if (!etat.table || !etat.resultat) {
+      erreurChamp('cc-fichier', 'Choisissez un fichier CSV.');
+      premier = 'cc-fichier';
+    } else if (!Object.keys(etat.resultat.valeurs).length) {
+      erreurChamp('cc-fichier', 'Aucune valeur n’a pu être associée à une zone.');
+      premier = 'cc-fichier';
+    }
+    exiger('cc-titre', 'Indiquez un titre.');
+    exiger('cc-indicateur', 'Indiquez le nom des données.');
+    let seuils = null;
+    try { seuils = CC.lireSeuils($('cc-seuils').value); erreurChamp('cc-seuils', ''); }
+    catch (err) { erreurChamp('cc-seuils', err.message); if (!premier) premier = 'cc-seuils'; }
+    if (premier) { $(premier).focus(); return; }
+
+    const licence = $('cc-licence').value === 'Autre' ? ($('cc-licence-autre').value.trim() || 'Autre') : $('cc-licence').value;
+    const unite = $('cc-unite').value.trim();
+    etat.carte = {
+      maille: mailleActive(),
+      valeurs: etat.resultat.valeurs,
+      classes: CC.calculerClasses(etat.resultat.valeurs, seuils, unite),
+      titre: $('cc-titre').value.trim(),
+      indicateur: $('cc-indicateur').value.trim(),
+      unite: unite,
+      source: $('cc-source').value.trim(),
+      millesime: $('cc-millesime').value.trim(),
+      licence: licence
+    };
+    $('cc-dialog').close();
+    afficherCarte();
+  }
+
+  // ------------------------------------------------------------------
+  // Affichage de la carte dans la page
+  // ------------------------------------------------------------------
+  function afficherCarte() {
+    const c = etat.carte, contenu = window.__createurCarte.ouvrirContenu();
+    const legende = c.classes.legende.map(function (l) {
+      return '<li><span class="cc-pastille" style="background:' + l.couleur + '"></span>' + esc(l.libelle) +
+        ' <span class="cc-nb">(' + l.nb + ' zone' + (l.nb > 1 ? 's' : '') + ')</span></li>';
+    }).join('');
+    const nbAbs = etat.resultat.absentes.length;
+    const lignes = CC.tableauValeurs(c.maille, c.valeurs).map(function (l) {
+      return '<tr><th scope="row">' + esc(l.nom) + '</th><td>' + esc(l.code) + '</td><td class="cc-num">' +
+        (l.valeur === null ? 'Donnée absente' : esc(CC.formaterNombre(l.valeur, c.unite))) + '</td></tr>';
+    }).join('');
+    const origine = [c.source ? 'Source : ' + c.source : 'Source non précisée', c.millesime ? 'Date : ' + c.millesime : '',
+      c.licence ? 'Licence : ' + c.licence : ''].filter(Boolean).join(' · ');
+    contenu.innerHTML = '<div class="panel card cc-resultat">' +
+      '<h2 class="cc-titre-carte" id="cc-titre-carte" tabindex="-1">' + esc(c.titre) + '</h2>' +
+      '<p class="cc-sous-titre">' + esc(c.indicateur) + ' · ' + esc(c.maille.libelle) + ' · fichier « ' + esc(etat.nomFichier) + ' »</p>' +
+      '<div class="cc-carte-et-legende"><div class="cc-carte">' + CC.construireSvg(Object.assign({ compact: true }, c)) + '</div>' +
+      '<div class="cc-legende"><p class="cc-legende-titre">' + esc(c.indicateur) + '</p><ul>' + legende +
+      (nbAbs ? '<li><span class="cc-pastille cc-hachure"></span>Donnée absente <span class="cc-nb">(' + nbAbs + ')</span></li>' : '') +
+      '</ul><p class="cc-aide">' + (c.classes.mode === 'seuils' ? 'Classes : seuils choisis.' : 'Classes contenant à peu près le même nombre de zones.') + '</p></div></div>' +
+      '<p class="cc-origine">' + esc(origine) + '</p>' +
+      '<div class="cc-actions"><button type="button" class="cc-bouton" id="cc-modifier">Modifier les réglages</button>' +
+      '<button type="button" class="cc-bouton" id="cc-png">Télécharger l’image (PNG)</button>' +
+      '<button type="button" class="cc-bouton" id="cc-svg">Télécharger l’image (SVG)</button>' +
+      '<button type="button" class="cc-bouton cc-principal" id="cc-proposer">Proposer cette carte</button></div>' +
+      '<div id="cc-proposer-msg" class="cc-proposer-msg" role="status"></div>' +
+      '<details class="cc-tableau"><summary>Tableau des valeurs (' + Object.keys(c.maille.zones).length + ' zones)</summary>' +
+      '<table><caption class="cc-sr">' + esc(c.indicateur) + ' par zone</caption><thead><tr><th scope="col">Zone</th><th scope="col">Code</th>' +
+      '<th scope="col">' + esc(c.indicateur) + '</th></tr></thead><tbody>' + lignes + '</tbody></table></details>' +
+      '</div>';
+    $('cc-modifier').addEventListener('click', ouvrir);
+    $('cc-png').addEventListener('click', telechargerPng);
+    $('cc-svg').addEventListener('click', function () {
+      telecharger(new Blob([CC.construireSvg(c)], { type: 'image/svg+xml' }), nomFichier('svg'));
+    });
+    $('cc-proposer').addEventListener('click', proposer);
+    $('cc-titre-carte').focus();
+  }
+
+  // ------------------------------------------------------------------
+  // Brique 4 : proposer la carte à la mission data/IA
+  // ------------------------------------------------------------------
+  const CHAMP_VERS_ID = { titre: 'cc-titre', indicateur: 'cc-indicateur', source: 'cc-source',
+    millesime: 'cc-millesime', licence: 'cc-licence' };
+
+  function proposer() {
+    const manquants = CC.champsManquantsProposition(etat.carte);
+    if (manquants.length) {
+      // Rouvre la boîte avec les champs à compléter signalés.
+      $('cc-dialog').showModal();
+      manquants.forEach(function (m) {
+        const id = m.cle === 'licence' && $('cc-licence').value === 'Autre' ? 'cc-licence-autre' : CHAMP_VERS_ID[m.cle];
+        erreurChamp(id, 'Obligatoire pour proposer la carte.');
+      });
+      const m0 = manquants[0];
+      $(m0.cle === 'licence' && $('cc-licence').value === 'Autre' ? 'cc-licence-autre' : CHAMP_VERS_ID[m0.cle]).focus();
+      return;
+    }
+    const prop = CC.creerProposition(etat.carte, etat.nomFichier, new Date().toISOString());
+    const nom = 'proposition-' + nomFichier('json');
+    telecharger(new Blob([JSON.stringify(prop, null, 2)], { type: 'application/json' }), nom);
+    $('cc-proposer-msg').innerHTML = '<p>Le fichier « ' + esc(nom) + ' » a été téléchargé sur votre ordinateur.</p>' +
+      '<p class="cc-message-envoi"><strong>' + esc(CC.MESSAGE_ENVOI) + '</strong></p>';
+  }
+
+  function nomFichier(ext) {
+    const base = etat.carte.titre.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'carte';
+    return base + '.' + ext;
+  }
+
+  function telecharger(blob, nom) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = nom;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function telechargerPng() {
+    const svg = CC.construireSvg(etat.carte);
+    const l = Number(/width="(\d+)"/.exec(svg)[1]), h = Number(/height="(\d+)"/.exec(svg)[1]);
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    img.onload = function () {
+      const canvas = document.createElement('canvas');
+      canvas.width = l * 2; canvas.height = h * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(2, 2);
+      ctx.drawImage(img, 0, 0, l, h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(function (b) { telecharger(b, nomFichier('png')); }, 'image/png');
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); alert('L’image n’a pas pu être créée. Essayez le format SVG.'); };
+    img.src = url;
+  }
+
+  // ------------------------------------------------------------------
+  // Ouverture : charge les contours du site si besoin, puis la boîte
+  // ------------------------------------------------------------------
+  function ouvrir() {
+    const pret = function () {
+      if (!etat.mailles) etat.mailles = CC.construireMailles(CARTE_DATA.base, DATA.entites_quartiers);
+      installerDialogue();
+      if (!etat.carte) {
+        const contenu = window.__createurCarte.ouvrirContenu();
+        contenu.innerHTML = '<div class="panel card"><h2 class="cc-titre-carte">Créer ma carte</h2>' +
+          '<p class="def-text">Importez un fichier CSV de données par IRIS ou par quartier de Bordeaux : la carte est dessinée dans votre navigateur. ' +
+          'Votre fichier n’est envoyé nulle part.</p><div class="cc-actions">' +
+          '<button type="button" class="cc-bouton cc-principal" id="cc-ouvrir-bis">Ouvrir la boîte de dialogue</button></div></div>';
+        $('cc-ouvrir-bis').addEventListener('click', ouvrir);
+      }
+      $('cc-dialog').showModal();
+    };
+    if (CARTE_DATA.base) { pret(); return; }
+    carteChargerScript(CARTE_FICHIERS.base, function (err) {
+      if (err) {
+        const contenu = window.__createurCarte.ouvrirContenu();
+        contenu.innerHTML = '<div class="panel card"><p class="def-text" role="alert">Les contours des zones n’ont pas pu être chargés (connexion interrompue ?). Réessayez.</p></div>';
+        return;
+      }
+      pret();
+    });
+  }
+
+  // Ce script est placé après le bouton dans la page : il existe déjà.
+  const btn = $('createur-carte-btn');
+  if (btn) btn.addEventListener('click', ouvrir);
+}());
+
 </script>
