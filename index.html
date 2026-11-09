@@ -2447,13 +2447,19 @@ function prechargerCartes() {
       // femmes + hommes = ensemble pour les 6 tranches et les 8 quartiers.
       // Le détail par sexe n'existe que pour ces 6 tranches larges (Insee).
       code: '__MULTISELECT_AGE_COARSE__',
-      label: 'Tranches d’âge larges (sélection multiple)',
+      label: 'Tranches d’âge larges (carte ou camemberts)',
+      // Mêmes 6 tranches dans les 3 modes : les cases cochées restent
+      // valables quand on change de mode (2026-11-09, Q16 du journal).
+      garderCasesEntreModes: true,
       niveaux: ['quartier'],
       groupe: 'Structure par âges',
       isMultiSelect: true,
       hasModes: true,
       modesLabel: 'Ensemble, femmes ou hommes',
       modeDansTitre: true,
+      // Vue Camemberts (2026-11-09, décision 39) : les 6 tranches du bouton
+      // actif (Ensemble, Femmes ou Hommes), 1 camembert par quartier.
+      vueCamemberts: 'modeActif',
       modes: [
         {
           id: 'ensemble', label: 'Ensemble', unite: 'personnes', summable: true,
@@ -3785,7 +3791,16 @@ function prechargerCartes() {
     const camBtn = document.getElementById('carte-vue-camemberts-btn');
     if (camBtn) camBtn.hidden = !vueCamemberts;
     if (vueCamemberts && carteIndicateurViewMode === 'camemberts') {
-      const part = ciFindIndicateur(carte, ind.vueCamemberts);
+      let part;
+      if (ind.vueCamemberts === 'modeActif') {
+        // Camemberts des tranches du mode actif ; le bouton de mode reste
+        // affiché (sans les cases à cocher : un camembert montre tout).
+        const actif = ciMultiSelectActive(ind);
+        part = { code: ind.code, label: ind.label.replace(/ \(.*\)$/, '') + ' — ' + actif.modeLabel,
+          codes: actif.codes, labels: actif.labels, unite: actif.unite };
+      } else {
+        part = ciFindIndicateur(carte, ind.vueCamemberts);
+      }
       if (viewToggleEl) {
         viewToggleEl.style.display = '';
         viewToggleEl.querySelectorAll('button').forEach(function (b) {
@@ -3795,9 +3810,28 @@ function prechargerCartes() {
       if (mapWrap) mapWrap.style.display = 'none';
       if (barsWrap) barsWrap.style.display = 'none';
       if (noDataEl) { noDataEl.style.display = 'none'; noDataEl.innerHTML = ''; }
-      if (multiselectEl) { multiselectEl.style.display = 'none'; multiselectEl.innerHTML = ''; }
+      if (multiselectEl) {
+        if (ind.vueCamemberts === 'modeActif' && ind.hasModes) {
+          multiselectEl.style.display = '';
+          multiselectEl.innerHTML = '<div class="view-toggle carte-multiselect-mode-toggle" role="group" aria-label="' +
+            (ind.modesLabel || 'Effectifs ou parts') + '">' + ind.modes.map(function (m) {
+              return '<button type="button" data-multiselect-mode="' + code + '" data-mode="' + m.id + '" class="' +
+                (m.id === carteMultiSelectMode[code] ? 'active' : '') + '">' + m.label + '</button>';
+            }).join('') + '</div>';
+          multiselectEl.querySelectorAll('[data-multiselect-mode]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              carteMultiSelectMode[code] = btn.getAttribute('data-mode');
+              if (!ind.garderCasesEntreModes) delete carteMultiSelectChecked[code];
+              renderCarteIndicateur(carteId, code);
+            });
+          });
+        } else {
+          multiselectEl.style.display = 'none';
+          multiselectEl.innerHTML = '';
+        }
+      }
       if (niveauToggleEl) niveauToggleEl.style.display = '';
-      if (subtitleEl) subtitleEl.textContent = '8 quartiers officiels — répartition de la population par tranche d’âge';
+      if (subtitleEl) subtitleEl.textContent = '8 quartiers officiels — répartition par tranche d’âge';
       if (partitionPiesEl && part) {
         partitionPiesEl.style.display = '';
         partitionPiesEl.innerHTML = renderCartePartitionPies(carte, part);
@@ -3886,7 +3920,7 @@ function prechargerCartes() {
             // Changement de mode = changement de sens des cases a cocher : on
             // repart sur un etat "tout coche" plutot que de garder des index
             // coches qui ne correspondraient plus aux memes tranches.
-            delete carteMultiSelectChecked[code];
+            if (!ind.garderCasesEntreModes) delete carteMultiSelectChecked[code];
             renderCarteIndicateur(carteId, code);
           });
         });
