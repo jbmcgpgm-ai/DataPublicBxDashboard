@@ -861,6 +861,11 @@
 
   .sidebar-col { display: flex; flex-direction: column; gap: 16px; }
   .cartes-nav { padding: 14px 16px; }
+  .carte-note {
+    margin: 8px 0 0; padding: 8px 12px; font-size: 13px; line-height: 1.45; color: var(--ink);
+    background: var(--surface-sunken); border-left: 3px solid var(--accent); border-radius: 4px; max-width: 74ch;
+  }
+  .carte-note[hidden] { display: none; }
   .cartes-nav-title {
     font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--ink-secondary); margin-bottom: 8px;
@@ -2277,6 +2282,9 @@ function prechargerCartes() {
     population: [{
       code: '__PARTITION_AGE__',
       label: 'Répartition par âge (camembert par quartier)',
+      // Hors du menu depuis le 2026-11-09 (décision 35) : affiché par le
+      // bouton « Camemberts » de l'entrée « Tranches d’âge fines (carte ou camemberts) ».
+      horsMenu: true,
       codes: AGE_BRACKETS.map(function (b) { return b[0]; }),
       labels: AGE_BRACKETS.map(function (b) { return b[1]; }),
       unite: 'personnes',
@@ -2418,7 +2426,10 @@ function prechargerCartes() {
   const CARTE_MULTISELECTS = {
     population: [{
       code: '__MULTISELECT_AGE__',
-      label: 'Tranches d’âge (sélection multiple)',
+      label: 'Tranches d’âge fines (carte ou camemberts)',
+      // Vue « Camemberts » (2026-11-09, décision 35) : même 10 tranches,
+      // 1 camembert par quartier, via le 3e bouton de la bascule de vue.
+      vueCamemberts: '__PARTITION_AGE__',
       codes: AGE_BRACKETS.map(function (b) { return b[0]; }),
       labels: AGE_BRACKETS.map(function (b) { return b[1]; }),
       unite: 'personnes',
@@ -2429,14 +2440,37 @@ function prechargerCartes() {
       // Tranches d'age "coarses" (2026-08-24, demande explicite) : remplace
       // les 6 entrees individuelles "Population agee de X a Y ans" (et leurs
       // boutons M/F/Total retires ci-dessus) par 1 seule entree.
+      // Bouton Ensemble / Femmes / Hommes (2026-11-09, demande du porteur,
+      // décision 33 du journal DATA_PUBLIQUE_Bx) : remplace les 12 entrées
+      // « Population de sexe féminin / masculin âgée de X à Y ans » du menu.
+      // Les 3 modes sont des effectifs, donc sommables ; vérifié en base :
+      // femmes + hommes = ensemble pour les 6 tranches et les 8 quartiers.
+      // Le détail par sexe n'existe que pour ces 6 tranches larges (Insee).
       code: '__MULTISELECT_AGE_COARSE__',
       label: 'Tranches d’âge larges (sélection multiple)',
-      codes: ['POP_0014', 'POP_1529', 'POP_3044', 'POP_4559', 'POP_6074', 'POP_75P'],
-      labels: ['0-14 ans', '15-29 ans', '30-44 ans', '45-59 ans', '60-74 ans', '75 ans ou plus'],
-      unite: 'personnes',
       niveaux: ['quartier'],
       groupe: 'Structure par âges',
       isMultiSelect: true,
+      hasModes: true,
+      modesLabel: 'Ensemble, femmes ou hommes',
+      modeDansTitre: true,
+      modes: [
+        {
+          id: 'ensemble', label: 'Ensemble', unite: 'personnes', summable: true,
+          codes: ['POP_0014', 'POP_1529', 'POP_3044', 'POP_4559', 'POP_6074', 'POP_75P'],
+          labels: ['0-14 ans', '15-29 ans', '30-44 ans', '45-59 ans', '60-74 ans', '75 ans ou plus'],
+        },
+        {
+          id: 'femmes', label: 'Femmes', unite: 'personnes', summable: true,
+          codes: ['POP_F_0014', 'POP_F_1529', 'POP_F_3044', 'POP_F_4559', 'POP_F_6074', 'POP_F_75P'],
+          labels: ['0-14 ans', '15-29 ans', '30-44 ans', '45-59 ans', '60-74 ans', '75 ans ou plus'],
+        },
+        {
+          id: 'hommes', label: 'Hommes', unite: 'personnes', summable: true,
+          codes: ['POP_H_0014', 'POP_H_1529', 'POP_H_3044', 'POP_H_4559', 'POP_H_6074', 'POP_H_75P'],
+          labels: ['0-14 ans', '15-29 ans', '30-44 ans', '45-59 ans', '60-74 ans', '75 ans ou plus'],
+        },
+      ],
     }, {
       // Personnes vivant seules a domicile (2026-08-24, demande explicite) :
       // 8 entrees (4 tranches x effectif/part) fusionnees en 1, avec bouton
@@ -2453,6 +2487,7 @@ function prechargerCartes() {
       // signale a l'utilisateur dans l'UI plutot que de sommer silencieusement
       // des pourcentages non comparables.
       code: '__MULTISELECT_SEUL__',
+      modeDansTitre: true, // rappel Effectifs / Parts dans le titre (2026-11-09)
       label: 'Personnes vivant seules à domicile (sélection multiple)',
       niveaux: ['quartier'],
       groupe: 'Structure par âges',
@@ -2484,6 +2519,7 @@ function prechargerCartes() {
       // remplace pas), meme principe que le camembert/selection multiple par
       // age.
       code: '__MULTISELECT_EMMENAGEMENT__',
+      modeDansTitre: true, // rappel Effectifs / Parts dans le titre (2026-11-09)
       label: 'Ancienneté d’emménagement (sélection multiple)',
       niveaux: ['quartier'],
       groupe: 'Familles Ménages Variations',
@@ -2566,6 +2602,16 @@ function prechargerCartes() {
   // groupe = liste ordonnee {code,label} ; seul le 1er code reste visible
   // dans le menu deroulant (les autres restent accessibles uniquement via le
   // bouton), avec un libelle de menu generique optionnel (dropdownLabel).
+  // Notes de lecture affichées sous le titre de la carte, par indicateur
+  // (2026-11-09, décision 38 : confusion signalée entre « Population » et
+  // « Population des ménages »). Définition Insee de la population hors ménages.
+  const CARTE_NOTES = {
+    POP_MENAGES: 'La différence avec « Population » correspond aux personnes que l’Insee classe « hors ménages ». ' +
+      'Elles vivent en communauté : maison de retraite ou Ehpad, foyer de travailleurs ou de jeunes, résidence universitaire, ' +
+      'internat, caserne, prison, communauté religieuse… Elle comprend aussi les personnes sans abri et celles qui vivent ' +
+      'en habitation mobile.',
+  };
+
   const CARTE_QUICK_GROUPS = {
     population: [
       // Masculin/Feminin/Total -- POP_TOTAL/POP_HOMMES/POP_FEMMES existent
@@ -2573,8 +2619,13 @@ function prechargerCartes() {
       // n'avaient qu'un code homme + un code femme, leur "total" est derive
       // cote Python (somme H+F par quartier, cf. build_carte_data_v5.py) mais
       // se comporte ensuite comme un indicateur normal.
+      // Population : effectifs ET parts femmes / hommes en une seule entrée
+      // (2026-11-09, demande du porteur, décision 37) ; remplace l'ancienne
+      // entrée « Répartition femmes/hommes de la population ». Libellés
+      // alignés sur le bouton Ensemble / Femmes / Hommes des tranches d'âge.
       { dropdownLabel: 'Population', options: [
-        { code: 'POP_TOTAL', label: 'Total' }, { code: 'POP_HOMMES', label: 'Masculin' }, { code: 'POP_FEMMES', label: 'Féminin' },
+        { code: 'POP_TOTAL', label: 'Ensemble' }, { code: 'POP_FEMMES', label: 'Femmes' }, { code: 'POP_HOMMES', label: 'Hommes' },
+        { code: 'PART_FEMMES', label: 'Part des femmes' }, { code: 'PART_HOMMES', label: 'Part des hommes' },
       ] },
       // Les 6 groupes M/F/Total par tranche d'age "coarse" (0-14, 15-29...)
       // sont retires d'ici (2026-08-24, demande explicite) : leurs 6 entrees
@@ -2584,19 +2635,16 @@ function prechargerCartes() {
       // exposee dans l'UI (les codes sous-jacents restent en base si besoin).
       // Ménages : nombre / taille moyenne / population
       { dropdownLabel: 'Ménages', options: [
-        { code: 'MEN_TOTAL', label: 'Nombre' }, { code: 'TAILLE_MOYENNE_MENAGES', label: 'Taille moyenne' }, { code: 'POP_MENAGES', label: 'Population' },
+        { code: 'MEN_TOTAL', label: 'Nombre' }, { code: 'TAILLE_MOYENNE_MENAGES', label: 'Taille moyenne' }, { code: 'POP_MENAGES', label: 'Population des ménages' },
       ] },
       // Migrations (1 an)
       { dropdownLabel: 'Migrations (1 an)', options: [
         { code: 'MIGR_ARRIVEES_1AN', label: 'Arrivées (France)' }, { code: 'MIGR_ARRIVEES_1AN_TOTAL', label: 'Arrivées (total)' },
         { code: 'MIGR_ARRIVEES_INTL_1AN', label: 'Arrivées (intl.)' }, { code: 'MIGR_DEPARTS_1AN', label: 'Départs' },
       ] },
-      // Part hommes/femmes dans la population (2026-08-24, demande explicite) :
-      // pas de "total" pertinent ici (une part n'a pas de 3e etat "les deux" --
-      // part hommes + part femmes fait deja ~100%), juste un bouton a 2 choix.
-      { dropdownLabel: 'Répartition femmes/hommes de la population', options: [
-        { code: 'PART_HOMMES', label: 'Masculin' }, { code: 'PART_FEMMES', label: 'Féminin' },
-      ] },
+      // (« Répartition femmes/hommes de la population », PART_HOMMES /
+      // PART_FEMMES : réunie dans l'entrée « Population » ci-dessus le
+      // 2026-11-09, décision 37.)
       // Ages Variations (3 indices independants, pas des variantes d'un meme
       // total -- regroupes en 1 bouton comme demande explicitement, "meme
       // mode que H/F").
@@ -2700,7 +2748,7 @@ function prechargerCartes() {
       if (p.remplace) p.codes.forEach(function (c) { excluded[c] = true; });
       (p.masquer || []).forEach(function (c) { excluded[c] = true; });
     });
-    return ciAllIndicateurs(carte).filter(function (ind) { return !excluded[ind.code]; });
+    return ciAllIndicateurs(carte).filter(function (ind) { return !excluded[ind.code] && !ind.horsMenu; });
   }
 
   function ciDropdownLabel(carteId, ind) {
@@ -3433,7 +3481,7 @@ function prechargerCartes() {
     const checkedSet = carteMultiSelectChecked[code] || {};
     let html = '';
     if (ind.hasModes) {
-      html += '<div class="view-toggle carte-multiselect-mode-toggle" role="group" aria-label="Effectifs ou parts">';
+      html += '<div class="view-toggle carte-multiselect-mode-toggle" role="group" aria-label="' + (ind.modesLabel || 'Effectifs ou parts') + '">';
       ind.modes.forEach(function (m) {
         html += '<button type="button" data-multiselect-mode="' + code + '" data-mode="' + m.id + '" class="' + (m.id === carteMultiSelectMode[code] ? 'active' : '') + '">' + m.label + '</button>';
       });
@@ -3663,8 +3711,16 @@ function prechargerCartes() {
     let indLabel = (DATA.indicateurs[code] && DATA.indicateurs[code].nom) || ind.label;
     // Titre du pave carte = intitule de l'indicateur (2026-09-24), sans les
     // precisions techniques de menu entre parentheses.
+    // Note de lecture propre à un indicateur (2026-11-09, décision 38).
+    const noteEl = document.getElementById('carte-iris-note');
+    if (noteEl) {
+      noteEl.textContent = CARTE_NOTES[code] || '';
+      noteEl.hidden = !CARTE_NOTES[code];
+    }
     const titreEl = document.getElementById('carte-iris-titre');
-    if (titreEl) titreEl.textContent = indLabel.replace(/ \((camembert par quartier|sélection multiple)\)$/, '');
+    if (titreEl) titreEl.textContent = indLabel.replace(/ \((camembert par quartier|sélection multiple|carte ou camemberts)\)$/, '') +
+      // Choix Ensemble / Femmes / Hommes rappelé dans le titre (2026-11-09).
+      (ind.modeDansTitre ? ' — ' + ciMultiSelectActive(ind).modeLabel : '');
     // Niveaux geographiques valables pour CET indicateur precis (ex. carte
     // "Pauvrete et niveau de vie" fusionnee, 2026-07-31 : les 7 indicateurs
     // Filosofi IRIS/quartier n'existent pas par carreau, et les 4 indicateurs
@@ -3725,6 +3781,29 @@ function prechargerCartes() {
     // "indicateur" special qui n'est pas un champ unique mais un ensemble
     // d'indicateurs formant une partition complete d'un total (ex. tranches
     // d'age) -- 1 camembert par quartier plutot qu'une carte choroplethe.
+    const vueCamemberts = !!(ind.vueCamemberts && niveau === 'quartier');
+    const camBtn = document.getElementById('carte-vue-camemberts-btn');
+    if (camBtn) camBtn.hidden = !vueCamemberts;
+    if (vueCamemberts && carteIndicateurViewMode === 'camemberts') {
+      const part = ciFindIndicateur(carte, ind.vueCamemberts);
+      if (viewToggleEl) {
+        viewToggleEl.style.display = '';
+        viewToggleEl.querySelectorAll('button').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-view') === 'camemberts');
+        });
+      }
+      if (mapWrap) mapWrap.style.display = 'none';
+      if (barsWrap) barsWrap.style.display = 'none';
+      if (noDataEl) { noDataEl.style.display = 'none'; noDataEl.innerHTML = ''; }
+      if (multiselectEl) { multiselectEl.style.display = 'none'; multiselectEl.innerHTML = ''; }
+      if (niveauToggleEl) niveauToggleEl.style.display = '';
+      if (subtitleEl) subtitleEl.textContent = '8 quartiers officiels — répartition de la population par tranche d’âge';
+      if (partitionPiesEl && part) {
+        partitionPiesEl.style.display = '';
+        partitionPiesEl.innerHTML = renderCartePartitionPies(carte, part);
+      }
+      return;
+    }
     if (ind.isPartition) {
       if (viewToggleEl) viewToggleEl.style.display = 'none';
       if (mapWrap) mapWrap.style.display = 'none';
@@ -3877,13 +3956,14 @@ function prechargerCartes() {
 
     // Bascule Carte/Barres : masquee au niveau "carreau" (pas de libelle
     // individuel exploitable pour un axe de barres, cf. ciGetUnits).
+    // « Camemberts » n'existe que pour l'entrée Tranches d'âge : ailleurs, vue carte.
+    const effectiveViewMode = niveau === 'carreau' || carteIndicateurViewMode === 'camemberts' ? 'carte' : carteIndicateurViewMode;
     if (viewToggleEl) {
       viewToggleEl.style.display = niveau === 'carreau' ? 'none' : '';
       viewToggleEl.querySelectorAll('button').forEach(function (b) {
-        b.classList.toggle('active', b.getAttribute('data-view') === carteIndicateurViewMode);
+        b.classList.toggle('active', b.getAttribute('data-view') === effectiveViewMode);
       });
     }
-    const effectiveViewMode = niveau === 'carreau' ? 'carte' : carteIndicateurViewMode;
     if (subtitleEl) subtitleEl.textContent = effectiveViewMode === 'barres' ? 'Classé par valeur décroissante' : 'Classes par quantiles';
 
     const nClasses = niveau === 'quartier' ? 5 : 7;
@@ -4301,6 +4381,8 @@ function prechargerCartes() {
     html += '<span class="carte-toggle-label">Ville</span>';
     html += '<div class="view-toggle" id="carte-iris-view-toggle" role="group" aria-label="Vue de l\u2019indicateur">';
     html += '<button type="button" data-view="carte" class="active">Carte</button>';
+    // Ordre Carte / Camemberts / Barres (demande du porteur, 2026-11-09).
+    html += '<button type="button" data-view="camemberts" id="carte-vue-camemberts-btn" hidden>Camemberts</button>';
     html += '<button type="button" data-view="barres">Barres</button>';
     html += '</div>';
     html += '</div>';
@@ -4335,6 +4417,7 @@ function prechargerCartes() {
     // renseigne par renderCarteIndicateur ; « Indicateur affiché » par defaut.
     html += '<p class="chart-title carte-iris-titre" id="carte-iris-titre">Indicateur affich\u00e9</p>';
     html += '<p class="chart-sub" id="carte-iris-subtitle">Classes par quantiles</p>';
+    html += '<p class="carte-note" id="carte-iris-note" hidden></p>';
     html += '</div>';
     html += '</div>';
     // 2e exemplaire du bouton d'options (2026-08-25, demande explicite) :
@@ -4459,7 +4542,8 @@ function prechargerCartes() {
     });
     document.querySelectorAll('#carte-iris-view-toggle button').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        carteIndicateurViewMode = btn.getAttribute('data-view') === 'barres' ? 'barres' : 'carte';
+        const vue = btn.getAttribute('data-view');
+        carteIndicateurViewMode = vue === 'barres' || vue === 'camemberts' ? vue : 'carte';
         renderCarteIndicateur(carteId, select.value);
       });
     });
