@@ -1121,6 +1121,34 @@
   .cc-proposer-msg { margin-top: 12px; padding: 10px 14px; border-left: 4px solid var(--accent);
     background: var(--accent-tint); border-radius: 6px; font-size: 14.5px; }
   .cc-proposer-msg p { margin: 4px 0; }
+  .cc-case { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
+  .cc-case input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+  .cc-dialog .cc-case label { display: inline; font-weight: 400; margin: 0; }
+  .cc-case input:disabled + label { color: var(--ink-muted); }
+  .cc-sous-legende { font-weight: 600; font-size: 14px; margin: 14px 0 4px; }
+  .cc-fond-groupe { border-top: 1px solid var(--line); padding: 4px 0; }
+  .cc-fond-groupe summary { cursor: pointer; font-weight: 600; font-size: 14px; padding: 6px 0; min-height: 24px; }
+  .cc-fond-groupe .cc-case { padding-left: 14px; }
+  .cc-case-noms { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .cc-icone { vertical-align: -3px; flex: none; }
+  .cc-trait { display: inline-block; width: 22px; height: 0; flex: none; }
+  .cc-legende-fond { margin-top: 14px; }
+  .cc-legende li.cc-legende-calque { display: block; }
+  .cc-legende li ul { padding-left: 22px; margin: 2px 0 4px; font-size: 13px; }
+  .cc-legende li ul li { padding: 1px 0; }
+  .cc-theme { padding-left: 14px; }
+  .cc-dialog .cc-theme > .cc-case label { font-weight: 600; }
+  .cc-sous-cases { padding-left: 26px; }
+  .cc-fond-groupe .cc-sous-cases .cc-case { padding-left: 0; }
+  /* Case + libellé du thème sur une ligne, bouton « sous-catégories » dessous. */
+  .cc-case-theme { flex-wrap: wrap; align-items: flex-start; }
+  .cc-case-theme label { flex: 1 1 calc(100% - 34px); min-width: 0; }
+  .cc-deplier {
+    margin-left: 26px; margin-top: 2px; font: inherit; font-size: 13px; color: var(--accent); background: none;
+    border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 10px; min-height: 32px; cursor: pointer;
+  }
+  .cc-deplier:hover { background: var(--surface-sunken); }
+  .cc-deplier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 </style>
 
@@ -5237,10 +5265,272 @@ function prechargerCartes() {
    * Dessine la carte complète (titre, zones, légende, source) en SVG
    * autonome : le même dessin sert à l'écran et au téléchargement.
    * @param {Object} o  { maille, valeurs, classes, titre, indicateur, unite,
-   *                      source, millesime, licence, compact }
+   *                      source, millesime, licence, compact, fond }
+   *   fond : { overlays, choix: {rues, quartiers, calques, noms}, quartiers } (facultatif)
    *   compact : carte seule (affichage à l'écran) ; sinon image complète.
    * @returns {string} le code SVG
    */
+  // ---------------------------------------------------------------------
+  // Fond de carte (décisions 20 à 27) : rues, limites des quartiers, lieux
+  // ---------------------------------------------------------------------
+  // Couleurs des cartes actuelles (template.html : --eq-*, --grp-*,
+  // --fontaine-*), recopiées ici car l'image téléchargée ne lit pas les
+  // variables CSS de la page. À garder alignées avec le gabarit.
+  const COULEURS_EQUIP = { A: '#2a78d6', B: '#eb6834', C: '#1baf7a', D: '#eda100', E: '#e87ba4', F: '#008300',
+    G: '#4a3aa7', H: '#e34948', J: '#b34d19', K: '#8a5a9e', L: '#b23488', M: '#7334b2', N: '#9e2e41', O: '#98941b', P: '#11799c' };
+  const COULEURS_GROUPE = { sante: '#c0392b', associatif: '#8e44ad', enfance: '#d68910', dechets: '#6b5000',
+    environnement: '#1e8449', culture: '#2557a7' };
+  const FONTAINE = { fonctionnelle: '#0ca30c', 'hors service': '#d03b3b' };
+  const CALQUES_EXCLUS = ['culture_agenda']; // décision 23 : données datées, périmées
+  const COULEUR_RUES = '#8F8084', COULEUR_LIMITES = '#241A1D', CONTOUR_SYMBOLE = '#241A1D';
+
+  /** Certains noms des données sources contiennent des entités HTML (&#x27;, &amp;…). */
+  function decoderEntites(t) {
+    return String(t == null ? '' : t)
+      .replace(/&#x([0-9a-f]+);/gi, function (_, h) { return String.fromCodePoint(parseInt(h, 16)); })
+      .replace(/&#(\d+);/g, function (_, d) { return String.fromCodePoint(Number(d)); })
+      .replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  }
+
+  function sansAccents(t) {
+    return String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  /**
+   * Nom court d'un lieu, écrit sur la carte (décision 30) : on retire du début
+   * du nom les mots qui répètent la sous-catégorie, que le symbole indique
+   * déjà (« Ecole Maternelle Lac 3 » → « Lac 3 »), avec « École » devant et
+   * les mots de liaison qui suivent (de, du, des, d', aux, au).
+   * Règle prudente : sans correspondance exacte, ou s'il ne reste rien,
+   * le nom est gardé tel quel. Le nom complet reste dans l'infobulle.
+   */
+  function nomCourt(nom, sousCategorie) {
+    const n = String(nom || '').trim(), lib = sansAccents(sousCategorie || '').trim();
+    if (!n || !lib || /[\/,()]/.test(lib)) return n;
+    const mots = lib.split(/\s+/).map(function (m) { return m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('\\s+');
+    const re = new RegExp('^(ecole\\s+)?' + mots + '(?=\\s|$)\\s*((de\\s+la|de\\s+l\'|du|des|de|d\'|aux|au)(\\s+|(?=\\S)))?');
+    const m = re.exec(sansAccents(n));
+    if (!m) return n;
+    // sansAccents garde la même longueur que le nom d'origine pour ces textes
+    // (lettres latines) : on coupe le nom d'origine au même endroit.
+    let reste = n.slice(m[0].length).replace(/^[\s\-–—:]+/, '').trim();
+    // Sigle entre parenthèses resté en tête : « (MAM) La Cabane » → « La Cabane » ;
+    // seul : « (Mériadeck) » → « Mériadeck ».
+    const paren = /^\(([^)]*)\)\s*(.*)$/.exec(reste);
+    if (paren) reste = (paren[2] || paren[1]).trim();
+    if (reste.length < 2) return n;
+    return reste.charAt(0).toUpperCase() + reste.slice(1);
+  }
+
+  function pointDe(f) {
+    if (f.point) return f.point;
+    if (f.geometry && f.geometry.type === 'Point') return f.geometry.coordinates;
+    return null;
+  }
+
+  /**
+   * Liste des lieux proposés, rangés par groupe (décisions 24 et 28).
+   * Identifiants : « eqs:<sous-catégorie> » pour une sous-catégorie
+   * d'équipements (ex. eqs:A1 = Maternelle), « grp:<groupe>:<calque> » sinon.
+   * « eq:<thème> » (thème entier) reste lu pour les propositions anciennes.
+   * @returns {Array<{id, libelle, calques: Array<{id, libelle, nb, couleur, sous?}>}>}
+   *   Équipements : un calque par thème, avec `sous` = ses sous-catégories.
+   */
+  function catalogueLieux(overlays) {
+    const groupes = [];
+    if (overlays.equipements) {
+      const nb = {}, nbSous = {}, ordreSous = {};
+      overlays.equipements.features.forEach(function (f) {
+        nb[f.theme] = (nb[f.theme] || 0) + 1;
+        if (!nbSous[f.sstheme]) {
+          nbSous[f.sstheme] = 0;
+          (ordreSous[f.theme] = ordreSous[f.theme] || []).push({ code: f.sstheme, label: f.sstheme_label, shape: f.shape });
+        }
+        nbSous[f.sstheme]++;
+      });
+      const meta = overlays.equipements.sstheme_meta || {};
+      groupes.push({
+        id: 'equipements', libelle: 'Équipements publics',
+        calques: Object.keys(overlays.equipements.themes).filter(function (t) { return nb[t]; }).map(function (t) {
+          // Ordre des sous-catégories : celui des cartes du site (sstheme_meta).
+          const rang = {};
+          (meta[t] || []).forEach(function (m, i) { rang[m.code] = i; });
+          const sous = (ordreSous[t] || []).slice().sort(function (a, b) {
+            return (a.code in rang ? rang[a.code] : 999) - (b.code in rang ? rang[b.code] : 999);
+          }).map(function (x) {
+            return { id: 'eqs:' + x.code, libelle: x.label || x.code, nb: nbSous[x.code], forme: x.shape || 'circle' };
+          });
+          return { id: 'eq:' + t, libelle: overlays.equipements.themes[t], nb: nb[t], couleur: COULEURS_EQUIP[t] || '#6B5A5E', sous: sous };
+        })
+      });
+    }
+    (overlays.groupes || []).forEach(function (g) {
+      const calques = g.layers.filter(function (l) { return CALQUES_EXCLUS.indexOf(l.id) < 0; }).map(function (l) {
+        return { id: 'grp:' + g.id + ':' + l.id, libelle: l.label, nb: l.features.length, couleur: COULEURS_GROUPE[g.id] || '#6B5A5E' };
+      });
+      if (calques.length) groupes.push({ id: g.id, libelle: g.label, calques: calques });
+    });
+    return groupes;
+  }
+
+  /** Les lieux d'un calque coché : [{x: lon, y: lat, nom, categorie, forme, couleur}] */
+  function lieuxDuCalque(overlays, id) {
+    const m = /^eq(s?):(.+)$/.exec(id);
+    if (m) {
+      return overlays.equipements.features.filter(function (f) {
+        return m[1] ? f.sstheme === m[2] : f.theme === m[2];
+      }).map(function (f) {
+        const nom = decoderEntites(f.nom);
+        return { pt: f.point, nom: nom, nomCarte: nomCourt(nom, f.sstheme_label),
+          categorie: f.theme_label + (f.sstheme_label ? ' — ' + f.sstheme_label : ''),
+          forme: f.shape || 'circle', couleur: COULEURS_EQUIP[f.theme] || '#6B5A5E' };
+      });
+    }
+    const g = /^grp:([^:]+):(.+)$/.exec(id);
+    if (!g || CALQUES_EXCLUS.indexOf(g[2]) >= 0) return [];
+    const grp = (overlays.groupes || []).filter(function (x) { return x.id === g[1]; })[0];
+    const calque = grp && grp.layers.filter(function (x) { return x.id === g[2]; })[0];
+    if (!calque) return [];
+    return calque.features.map(function (f) {
+      return { pt: pointDe(f), nom: decoderEntites(f.nom || calque.label),
+        categorie: calque.label + (f.sub ? ' — ' + decoderEntites(f.sub) : '') + (calque.status_colored && f.etat ? ' — ' + f.etat : ''),
+        forme: 'circle',
+        couleur: calque.status_colored ? (FONTAINE[f.etat] || '#6B5A5E') : (COULEURS_GROUPE[grp.id] || '#6B5A5E') };
+    }).filter(function (l) { return l.pt; });
+  }
+
+  /**
+   * Symbole SVG complet (mêmes 5 formes et tailles que ciMakeMarker du site).
+   * `titre` : infobulle au survol (facultatif, déjà échappé).
+   */
+  function symbole(forme, x, y, couleur, s, titre) {
+    s = s || 2.7;
+    const f = function (n) { return n.toFixed(1); };
+    // Contour foncé (décision 29) : les points restent visibles sur toutes
+    // les couleurs de la carte, y compris les bleus des classes.
+    const style = ' fill="' + couleur + '" stroke="' + CONTOUR_SYMBOLE + '" stroke-width="0.7"';
+    const fin = titre ? '><title>' + titre + '</title>' : '/>';
+    const poly = function (pts) {
+      return '<polygon points="' + pts.map(function (p) { return f(p[0]) + ',' + f(p[1]); }).join(' ') + '"' + style +
+        (titre ? fin + '</polygon>' : fin);
+    };
+    if (forme === 'square') {
+      return '<rect x="' + f(x - s) + '" y="' + f(y - s) + '" width="' + f(2 * s) + '" height="' + f(2 * s) + '"' + style +
+        (titre ? fin + '</rect>' : fin);
+    }
+    if (forme === 'triangle') return poly([[x, y - s * 1.25], [x - s * 1.15, y + s * 0.85], [x + s * 1.15, y + s * 0.85]]);
+    if (forme === 'diamond') { const d = s * 1.35; return poly([[x, y - d], [x + d, y], [x, y + d], [x - d, y]]); }
+    if (forme === 'cross') {
+      const a = s * 1.3, b = s * 0.42;
+      return poly([[x - b, y - a], [x + b, y - a], [x + b, y - b], [x + a, y - b], [x + a, y + b], [x + b, y + b],
+        [x + b, y + a], [x - b, y + a], [x - b, y + b], [x - a, y + b], [x - a, y - b], [x - b, y - b]]);
+    }
+    return '<circle cx="' + f(x) + '" cy="' + f(y) + '" r="' + f(s * 0.9) + '"' + style + (titre ? fin + '</circle>' : fin);
+  }
+
+  /** Petite icône SVG d'un symbole, pour la légende affichée en HTML. */
+  function iconeSymbole(forme, couleur) {
+    return '<svg class="cc-icone" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">' +
+      symbole(forme, 8, 8, couleur, 4.6) + '</svg>';
+  }
+
+  /**
+   * Dessin du fond (SVG, dans le repère de la carte).
+   * @param {Object} fond  { overlays, choix: {rues, quartiers, calques: [], noms}, quartiers: zones des quartiers }
+   */
+  function svgFond(fond, proj, mailleId) {
+    if (!fond || !fond.choix) return '';
+    const c = fond.choix;
+    let out = '';
+    if (c.rues && fond.overlays && fond.overlays.voies) {
+      const d = fond.overlays.voies.features.map(function (v) {
+        const lignes = v.geometry.type === 'MultiLineString' ? v.geometry.coordinates : [v.geometry.coordinates];
+        return lignes.map(function (l) {
+          return l.map(function (pt, i) { const p = proj(pt[0], pt[1]); return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('');
+        }).join('');
+      }).join('');
+      out += '<path d="' + d + '" fill="none" stroke="' + COULEUR_RUES + '" stroke-width="0.6" stroke-opacity="0.7" pointer-events="none"/>';
+    }
+    if (c.quartiers && mailleId !== 'quartier' && fond.quartiers) {
+      out += Object.keys(fond.quartiers).sort().map(function (q) {
+        return '<path d="' + cheminSvg(fond.quartiers[q].geometry, proj) + '" fill="none" stroke="' + COULEUR_LIMITES +
+          '" stroke-width="1.8" pointer-events="none"/>';
+      }).join('');
+    }
+    let noms = '';
+    (c.calques || []).forEach(function (id) {
+      lieuxDuCalque(fond.overlays, id).forEach(function (l) {
+        const p = proj(l.pt[0], l.pt[1]);
+        out += symbole(l.forme, p[0], p[1], l.couleur, 2.7, echapper(l.nom + ' — ' + l.categorie));
+        if (c.noms) {
+          noms += '<text x="' + (p[0] + 4).toFixed(1) + '" y="' + (p[1] + 2.5).toFixed(1) + '" font-size="7" fill="#241A1D" ' +
+            'stroke="#ffffff" stroke-width="2" paint-order="stroke" stroke-linejoin="round">' + echapper(l.nomCarte || l.nom) + '</text>';
+        }
+      });
+    });
+    return out + noms; // noms au-dessus de tous les symboles
+  }
+
+  /**
+   * Légende du fond (décision 27) : une ligne par élément coché.
+   * @returns {Array<{type: 'ligne'|'point', couleur, forme, libelle, nb, sous: Array}>}
+   */
+  function legendeFond(fond, mailleId) {
+    if (!fond || !fond.choix) return [];
+    const c = fond.choix, leg = [];
+    if (c.rues) leg.push({ type: 'ligne', couleur: COULEUR_RUES, epaisseur: 1, libelle: 'Rues' });
+    if (c.quartiers && mailleId !== 'quartier') leg.push({ type: 'ligne', couleur: COULEUR_LIMITES, epaisseur: 2.5, libelle: 'Limites des quartiers' });
+    const catalogue = {}, themeDeSous = {};
+    catalogueLieux(fond.overlays || {}).forEach(function (g) {
+      g.calques.forEach(function (k) {
+        catalogue[k.id] = { k: k, g: g };
+        (k.sous || []).forEach(function (ss) { themeDeSous[ss.id] = k; });
+      });
+    });
+    // Sous-catégories d'équipements cochées : une entrée par thème, avec
+    // seulement les sous-catégories cochées (décision 28).
+    const parTheme = {};
+    (c.calques || []).forEach(function (id) {
+      const theme = themeDeSous[id];
+      if (!theme) {
+        const ref0 = catalogue[id];
+        if (ref0) leg.push(id); // place réservée, remplie plus bas
+        return;
+      }
+      let e = parTheme[theme.id];
+      if (!e) {
+        e = parTheme[theme.id] = { type: 'point', couleur: theme.couleur, forme: 'circle', libelle: theme.libelle, nb: 0, sous: [] };
+        leg.push(e);
+      }
+      const ss = theme.sous.filter(function (x) { return x.id === id; })[0];
+      if (e.sous.some(function (x) { return x.id === id; })) return;
+      e.sous.push({ id: id, forme: ss.forme, libelle: ss.libelle, nb: ss.nb });
+      e.nb += ss.nb;
+    });
+    for (let i = 0; i < leg.length; i++) {
+      if (typeof leg[i] !== 'string') continue;
+      const id = leg[i], ref = catalogue[id];
+      const lieux = lieuxDuCalque(fond.overlays, id);
+      const entree = { type: 'point', couleur: ref.k.couleur, forme: 'circle', libelle: ref.k.libelle, nb: lieux.length, sous: [] };
+      leg[i] = entree;
+      if (id.indexOf('eq:') === 0) {
+        // Équipements : la forme distingue la sous-catégorie, on l'explique.
+        const parSous = {};
+        lieux.forEach(function (l) {
+          const s = l.categorie.split(' — ')[1] || l.categorie;
+          (parSous[s] = parSous[s] || { forme: l.forme, libelle: s, nb: 0 }).nb++;
+        });
+        entree.sous = Object.keys(parSous).map(function (k) { return parSous[k]; });
+      } else if (/:fontaines$/.test(id)) {
+        entree.sous = Object.keys(FONTAINE).map(function (etat) {
+          return { forme: 'circle', couleur: FONTAINE[etat], libelle: etat,
+            nb: lieux.filter(function (l) { return l.couleur === FONTAINE[etat]; }).length };
+        });
+      }
+    }
+    return leg;
+  }
+
   function construireSvg(o) {
     const CARTE = 560, LEG = 260, L = CARTE + LEG, PAD = 16;
     const lignesTitre = couperTexte(o.titre || '', 60);
@@ -5258,14 +5548,18 @@ function prechargerCartes() {
         '" stroke="#ffffff" stroke-width="0.8" data-code="' + echapper(code) + '"><title>' +
         echapper(info) + '</title></path>';
     });
+    // Fond de carte par-dessus les couleurs, découpé au cadre de la carte.
+    const fond = svgFond(o.fond, proj, o.maille.id);
+    if (fond) zones += '<g clip-path="url(#cc-cadre)">' + fond + '</g>';
+    const defsCadre = '<clipPath id="cc-cadre"><rect width="' + CARTE + '" height="' + CARTE + '"/></clipPath>';
     if (o.compact) {
       // Version écran : la carte seule ; titre, légende et source sont
       // affichés en HTML à côté (lisibles sur téléphone).
       return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + CARTE + ' ' + CARTE +
         '" role="img" aria-label="' + echapper('Carte : ' + (o.indicateur || '') + '. Valeurs détaillées dans le tableau sous la carte.') + '">' +
         '<defs><pattern id="cc-hachures" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
-        '<rect width="6" height="6" fill="#ded9d0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a9185" stroke-width="2"/></pattern></defs>' +
-        zones + '</svg>';
+        '<rect width="6" height="6" fill="#ded9d0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a9185" stroke-width="2"/></pattern>' +
+        defsCadre + '</defs>' + zones + '</svg>';
     }
     let leg = '<text x="0" y="0" font-size="14" font-weight="700" fill="#241A1D">' +
       echapper(o.indicateur || '') + '</text>';
@@ -5285,15 +5579,47 @@ function prechargerCartes() {
     y += 26;
     leg += '<text x="0" y="' + y + '" font-size="11.5" fill="#6B5A5E">' +
       (o.classes.mode === 'seuils' ? 'Classes : seuils choisis' : 'Classes de même effectif') + '</text>';
+    const legFond = legendeFond(o.fond, o.maille.id);
+    if (legFond.length) {
+      y += 34;
+      leg += '<text x="0" y="' + y + '" font-size="14" font-weight="700" fill="#241A1D">Fond de carte</text>';
+      const ligneTexte = function (x, txt, taille) {
+        let h = '';
+        couperTexte(txt, x > 30 ? 30 : 32).forEach(function (t, i) {
+          if (i) y += taille + 3;
+          h += '<text x="' + x + '" y="' + y + '" font-size="' + taille + '" fill="#241A1D">' + echapper(t) + '</text>';
+        });
+        return h;
+      };
+      legFond.forEach(function (e) {
+        y += 22;
+        if (e.type === 'ligne') {
+          leg += '<line x1="0" y1="' + (y - 4) + '" x2="22" y2="' + (y - 4) + '" stroke="' + e.couleur + '" stroke-width="' + e.epaisseur + '"/>';
+          leg += ligneTexte(30, e.libelle, 13);
+        } else {
+          leg += symbole(e.forme, 11, y - 4, e.couleur, 4);
+          leg += ligneTexte(30, e.libelle + ' (' + e.nb + ')', 13);
+          e.sous.forEach(function (ss) {
+            y += 17;
+            leg += symbole(ss.forme, 41, y - 4, ss.couleur || e.couleur, 3.2);
+            leg += ligneTexte(50, ss.libelle + ' (' + ss.nb + ')', 11.5);
+          });
+        }
+      });
+    }
+    const hLegende = 30 + y + 16;
     const piedLignes = couperTexte(
       ['Source : ' + (o.source || 'non précisée'), o.millesime ? 'Date : ' + o.millesime : '',
         o.licence ? 'Licence : ' + o.licence : ''].filter(Boolean).join(' · '), 110);
-    const H = hTitre + CARTE + piedLignes.length * 16 + PAD;
+    const hCorps = Math.max(CARTE, hLegende);
+    // Hauteur entière : le téléchargement PNG la relit (voir createur_carte_ui.js).
+    const H = Math.ceil(hTitre + hCorps + piedLignes.length * 16 + PAD);
     let svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + L + ' ' + H + '" width="' + L + '" height="' + H +
       '" role="img" aria-labelledby="cc-svg-titre" font-family="Segoe UI, Arial, sans-serif">' +
       '<title id="cc-svg-titre">' + echapper((o.titre || '') + ' — ' + (o.indicateur || '')) + '</title>' +
       '<defs><pattern id="cc-hachures" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">' +
-      '<rect width="6" height="6" fill="#ded9d0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a9185" stroke-width="2"/></pattern></defs>' +
+      '<rect width="6" height="6" fill="#ded9d0"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a9185" stroke-width="2"/></pattern>' +
+      defsCadre + '</defs>' +
       '<rect width="100%" height="100%" fill="#ffffff"/>';
     lignesTitre.forEach(function (t, i) {
       svg += '<text x="' + PAD + '" y="' + (PAD + 20 + i * 26) + '" font-size="21" font-weight="700" fill="#241A1D">' + echapper(t) + '</text>';
@@ -5301,7 +5627,7 @@ function prechargerCartes() {
     svg += '<g transform="translate(0,' + hTitre + ')">' + zones + '</g>' +
       '<g transform="translate(' + (CARTE + 4) + ',' + (hTitre + 30) + ')">' + leg + '</g>';
     piedLignes.forEach(function (t, i) {
-      svg += '<text x="' + PAD + '" y="' + (hTitre + CARTE + 12 + i * 16) + '" font-size="12" fill="#6B5A5E">' + echapper(t) + '</text>';
+      svg += '<text x="' + PAD + '" y="' + (hTitre + hCorps + 12 + i * 16) + '" font-size="12" fill="#6B5A5E">' + echapper(t) + '</text>';
     });
     return svg + '</svg>';
   }
@@ -5362,6 +5688,11 @@ function prechargerCartes() {
       source: c.source,
       millesime: c.millesime,
       licence: c.licence,
+      // Fond de carte choisi (décisions 20 à 27) : réglages seulement.
+      fond: c.fond && c.fond.choix ? {
+        rues: !!c.fond.choix.rues, quartiers: !!c.fond.choix.quartiers,
+        calques: (c.fond.choix.calques || []).slice(), noms: !!c.fond.choix.noms
+      } : null,
       valeurs: valeurs
     };
   }
@@ -5394,7 +5725,17 @@ function prechargerCartes() {
       if (!Array.isArray(p.seuils)) throw new Error('Seuils mal formés.');
       seuils = lireSeuils(p.seuils.join(' ; ').replace(/\./g, ','));
     }
+    let fond = null;
+    if (p.fond != null) {
+      const f = p.fond;
+      if (typeof f !== 'object' || Array.isArray(f) || !Array.isArray(f.calques) ||
+          f.calques.some(function (x) { return typeof x !== 'string' || !/^(eq|eqs|grp):[\w:\u00C0-\u017F /-]+$/.test(x); })) {
+        throw new Error('Fond de carte mal formé.');
+      }
+      fond = { rues: f.rues === true, quartiers: f.quartiers === true, calques: f.calques.slice(), noms: f.noms === true };
+    }
     return {
+      fond: fond,
       maille: maille, valeurs: p.valeurs, titre: p.titre, indicateur: p.indicateur, unite: p.unite || '',
       source: p.source, millesime: p.millesime, licence: p.licence, creeLe: p.creeLe, fichierSource: p.fichierSource,
       classes: calculerClasses(p.valeurs, seuils, p.unite || '')
@@ -5402,6 +5743,12 @@ function prechargerCartes() {
   }
 
   return {
+    decoderEntites: decoderEntites,
+    nomCourt: nomCourt,
+    iconeSymbole: iconeSymbole,
+    catalogueLieux: catalogueLieux,
+    lieuxDuCalque: lieuxDuCalque,
+    legendeFond: legendeFond,
     MESSAGE_ENVOI: MESSAGE_ENVOI,
     champsManquantsProposition: champsManquantsProposition,
     creerProposition: creerProposition,
@@ -5525,6 +5872,9 @@ function prechargerCartes() {
       '<p class="cc-erreur" id="cc-licence-autre-err" role="alert"></p></div>' +
       '</fieldset>' +
 
+      '<fieldset id="cc-fond"><legend>4. Fond de carte (facultatif)</legend>' +
+      '<div id="cc-fond-contenu"><p class="cc-aide">Chargement des fonds de carte…</p></div></fieldset>' +
+
       '<div class="cc-actions"><button type="submit" class="cc-bouton cc-principal" id="cc-generer">Générer la carte</button>' +
       '<button type="button" class="cc-bouton" id="cc-annuler">Annuler</button></div>' +
       '</form></dialog>';
@@ -5542,7 +5892,7 @@ function prechargerCartes() {
     // Par défaut : les quartiers (choix par défaut des cartes du site).
     maille.value = 'quartier';
     majAideMaille();
-    maille.addEventListener('change', function () { majAideMaille(); proposerColonnes(); majRapport(); });
+    maille.addEventListener('change', function () { majAideMaille(); proposerColonnes(); majRapport(); majFondMaille(); });
     $('cc-modele').addEventListener('click', telechargerModele);
     $('cc-fichier').addEventListener('change', lireFichier);
     $('cc-col-code').addEventListener('change', function () { etat.choixDoublons = {}; majRapport(); });
@@ -5563,6 +5913,111 @@ function prechargerCartes() {
         majRapport(true);
       }
     });
+  }
+
+  // ------------------------------------------------------------------
+  // Fond de carte (décisions 20 à 27)
+  // ------------------------------------------------------------------
+  function remplirFond(erreur) {
+    const zone = $('cc-fond-contenu');
+    if (!zone || zone.dataset.rempli) return;
+    if (erreur || !CARTE_DATA.overlays) {
+      if (erreur) zone.innerHTML = '<p class="cc-aide" role="status">Les fonds de carte n’ont pas pu être chargés : la carte sera dessinée sans fond.</p>';
+      return;
+    }
+    zone.dataset.rempli = '1';
+    let h = '<p class="cc-aide">Rien n’est coché au départ. Cochez ce que vous voulez voir sur la carte.</p>' +
+      '<div class="cc-case"><input type="checkbox" id="cc-fond-rues"> <label for="cc-fond-rues">Rues</label></div>' +
+      '<div class="cc-case"><input type="checkbox" id="cc-fond-quartiers" aria-describedby="cc-fond-quartiers-aide"> ' +
+      '<label for="cc-fond-quartiers">Limites des quartiers</label></div>' +
+      '<p class="cc-aide" id="cc-fond-quartiers-aide">Pour une carte par IRIS : montre les 8 quartiers par-dessus.</p>' +
+      '<p class="cc-sous-legende">Lieux</p>';
+    CC.catalogueLieux(CARTE_DATA.overlays).forEach(function (g, i) {
+      const unite = g.id === 'equipements' ? ' thème' : ' type' + (g.calques.length > 1 ? 's' : '') + ' de lieux';
+      h += '<details class="cc-fond-groupe"><summary>' + esc(g.libelle) + ' <span class="cc-nb">(' + g.calques.length +
+        (g.id === 'equipements' ? unite + (g.calques.length > 1 ? 's' : '') : unite) + ')</span></summary>';
+      g.calques.forEach(function (k, j) {
+        const id = 'cc-fc-' + i + '-' + j;
+        if (k.sous) {
+          // Équipements (décision 28) : case du thème = tout cocher / tout
+          // décocher ; seules les cases des sous-catégories comptent.
+          // Les sous-catégories sont repliées : un bouton les déplie (décision 31).
+          h += '<div class="cc-theme"><div class="cc-case cc-case-theme"><input type="checkbox" class="cc-fond-theme" id="' + id + '" data-theme="' + esc(k.id) + '"> ' +
+            '<label for="' + id + '">' + CC.iconeSymbole('circle', k.couleur) + ' ' + esc(k.libelle) +
+            ' <span class="cc-nb">(' + k.nb + ')</span></label>' +
+            '<button type="button" class="cc-deplier" aria-expanded="false" aria-controls="' + id + '-sous">' +
+            '<span aria-hidden="true">▸</span> ' + k.sous.length + ' sous-catégorie' + (k.sous.length > 1 ? 's' : '') +
+            '<span class="cc-sr"> de « ' + esc(k.libelle) + ' »</span></button></div>' +
+            '<div class="cc-sous-cases" id="' + id + '-sous" hidden>';
+          k.sous.forEach(function (ss, n) {
+            const ids = id + '-' + n;
+            h += '<div class="cc-case"><input type="checkbox" class="cc-fond-calque" id="' + ids + '" value="' + esc(ss.id) + '" data-theme="' + esc(k.id) + '"> ' +
+              '<label for="' + ids + '">' + CC.iconeSymbole(ss.forme, k.couleur) + ' ' + esc(ss.libelle) +
+              ' <span class="cc-nb">(' + ss.nb + ')</span></label></div>';
+          });
+          h += '</div></div>';
+          return;
+        }
+        h += '<div class="cc-case"><input type="checkbox" class="cc-fond-calque" id="' + id + '" value="' + esc(k.id) + '"> ' +
+          '<label for="' + id + '">' + CC.iconeSymbole('circle', k.couleur) + ' ' + esc(k.libelle) +
+          ' <span class="cc-nb">(' + k.nb + ')</span></label></div>';
+      });
+      h += '</details>';
+    });
+    h += '<div class="cc-case cc-case-noms"><input type="checkbox" id="cc-fond-noms" aria-describedby="cc-fond-noms-aide"> ' +
+      '<label for="cc-fond-noms">Écrire le nom des lieux sur la carte</label></div>' +
+      '<p class="cc-aide" id="cc-fond-noms-aide">Sans cette case, le nom apparaît seulement au survol d’un point. ' +
+      'Avec beaucoup de lieux cochés, les noms se chevauchent.</p>';
+    zone.innerHTML = h;
+    // Case d'un thème ↔ cases de ses sous-catégories (cochée, décochée ou
+    // « en partie » quand seules certaines sont cochées).
+    zone.addEventListener('click', function (e) {
+      const b = e.target.closest('.cc-deplier');
+      if (!b) return;
+      const ouvert = b.getAttribute('aria-expanded') === 'true';
+      b.setAttribute('aria-expanded', ouvert ? 'false' : 'true');
+      b.querySelector('[aria-hidden]').textContent = ouvert ? '▸' : '▾';
+      $(b.getAttribute('aria-controls')).hidden = ouvert;
+    });
+    zone.addEventListener('change', function (e) {
+      const t = e.target;
+      if (t.classList.contains('cc-fond-theme')) {
+        zone.querySelectorAll('.cc-fond-calque[data-theme="' + t.dataset.theme + '"]').forEach(function (x) { x.checked = t.checked; });
+      } else if (t.classList.contains('cc-fond-calque') && t.dataset.theme) {
+        majCaseTheme(t.dataset.theme);
+      }
+    });
+    majFondMaille();
+  }
+
+  function majCaseTheme(theme) {
+    const zone = $('cc-fond-contenu');
+    const sous = zone.querySelectorAll('.cc-fond-calque[data-theme="' + theme + '"]');
+    const nb = Array.prototype.filter.call(sous, function (x) { return x.checked; }).length;
+    const caseTheme = zone.querySelector('.cc-fond-theme[data-theme="' + theme + '"]');
+    caseTheme.checked = nb === sous.length;
+    caseTheme.indeterminate = nb > 0 && nb < sous.length;
+  }
+
+  function majFondMaille() {
+    const c = $('cc-fond-quartiers');
+    if (!c) return;
+    const quartier = $('cc-maille').value === 'quartier';
+    c.disabled = quartier;
+    if (quartier) c.checked = false;
+    $('cc-fond-quartiers-aide').textContent = quartier
+      ? 'Sans objet ici : la carte est déjà dessinée par quartier.'
+      : 'Pour une carte par IRIS : montre les 8 quartiers par-dessus.';
+  }
+
+  function lireChoixFond() {
+    if (!$('cc-fond-rues')) return null;
+    return {
+      rues: $('cc-fond-rues').checked,
+      quartiers: $('cc-fond-quartiers').checked && !$('cc-fond-quartiers').disabled,
+      calques: Array.prototype.map.call(document.querySelectorAll('.cc-fond-calque:checked'), function (x) { return x.value; }),
+      noms: $('cc-fond-noms').checked
+    };
   }
 
   function mailleActive() {
@@ -5724,7 +6179,12 @@ function prechargerCartes() {
       unite: unite,
       source: $('cc-source').value.trim(),
       millesime: $('cc-millesime').value.trim(),
-      licence: licence
+      licence: licence,
+      fond: lireChoixFond() ? {
+        overlays: CARTE_DATA.overlays,
+        choix: lireChoixFond(),
+        quartiers: etat.mailles.filter(function (m) { return m.id === 'quartier'; })[0].zones
+      } : null
     };
     $('cc-dialog').close();
     afficherCarte();
@@ -5752,7 +6212,8 @@ function prechargerCartes() {
       '<div class="cc-carte-et-legende"><div class="cc-carte">' + CC.construireSvg(Object.assign({ compact: true }, c)) + '</div>' +
       '<div class="cc-legende"><p class="cc-legende-titre">' + esc(c.indicateur) + '</p><ul>' + legende +
       (nbAbs ? '<li><span class="cc-pastille cc-hachure"></span>Donnée absente <span class="cc-nb">(' + nbAbs + ')</span></li>' : '') +
-      '</ul><p class="cc-aide">' + (c.classes.mode === 'seuils' ? 'Classes : seuils choisis.' : 'Classes contenant à peu près le même nombre de zones.') + '</p></div></div>' +
+      '</ul><p class="cc-aide">' + (c.classes.mode === 'seuils' ? 'Classes : seuils choisis.' : 'Classes contenant à peu près le même nombre de zones.') + '</p>' +
+      legendeFondHtml(c) + '</div></div>' +
       '<p class="cc-origine">' + esc(origine) + '</p>' +
       '<div class="cc-actions"><button type="button" class="cc-bouton" id="cc-modifier">Modifier les réglages</button>' +
       '<button type="button" class="cc-bouton" id="cc-png">Télécharger l’image (PNG)</button>' +
@@ -5798,6 +6259,22 @@ function prechargerCartes() {
       '<p class="cc-message-envoi"><strong>' + esc(CC.MESSAGE_ENVOI) + '</strong></p>';
   }
 
+  // Légende du fond (décision 27), même contenu que dans l'image téléchargée.
+  function legendeFondHtml(c) {
+    const leg = CC.legendeFond(c.fond, c.maille.id);
+    if (!leg.length) return '';
+    return '<p class="cc-legende-titre cc-legende-fond">Fond de carte</p><ul>' + leg.map(function (e) {
+      if (e.type === 'ligne') {
+        return '<li><span class="cc-trait" style="border-top:' + e.epaisseur + 'px solid ' + e.couleur + '"></span>' + esc(e.libelle) + '</li>';
+      }
+      return '<li class="cc-legende-calque"><span>' + CC.iconeSymbole(e.forme, e.couleur) + ' ' + esc(e.libelle) +
+        ' <span class="cc-nb">(' + e.nb + ')</span></span>' +
+        (e.sous.length ? '<ul>' + e.sous.map(function (ss) {
+          return '<li>' + CC.iconeSymbole(ss.forme, ss.couleur || e.couleur) + ' ' + esc(ss.libelle) + ' <span class="cc-nb">(' + ss.nb + ')</span></li>';
+        }).join('') + '</ul>' : '') + '</li>';
+    }).join('') + '</ul>';
+  }
+
   function nomFichier(ext) {
     const base = etat.carte.titre.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'carte';
@@ -5814,7 +6291,9 @@ function prechargerCartes() {
 
   function telechargerPng() {
     const svg = CC.construireSvg(etat.carte);
-    const l = Number(/width="(\d+)"/.exec(svg)[1]), h = Number(/height="(\d+)"/.exec(svg)[1]);
+    // Dimensions lues sur la balise <svg> elle-même (pas sur un motif intérieur).
+    const dim = /^<svg[^>]* width="(\d+)" height="(\d+)"/.exec(svg);
+    const l = Number(dim[1]), h = Number(dim[2]);
     const img = new Image();
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
     img.onload = function () {
@@ -5837,6 +6316,7 @@ function prechargerCartes() {
     const pret = function () {
       if (!etat.mailles) etat.mailles = CC.construireMailles(CARTE_DATA.base, DATA.entites_quartiers);
       installerDialogue();
+      if (CARTE_DATA.overlays) remplirFond();
       if (!etat.carte) {
         const contenu = window.__createurCarte.ouvrirContenu();
         contenu.innerHTML = '<div class="panel card"><h2 class="cc-titre-carte">Créer ma carte</h2>' +
@@ -5847,6 +6327,10 @@ function prechargerCartes() {
       }
       $('cc-dialog').showModal();
     };
+    // Les fonds de carte (facultatifs) se chargent à part : leur échec
+    // n'empêche pas de créer une carte.
+    if (CARTE_DATA.overlays) remplirFond();
+    else carteChargerScript(CARTE_FICHIERS.overlays, function (err) { remplirFond(err); });
     if (CARTE_DATA.base) { pret(); return; }
     carteChargerScript(CARTE_FICHIERS.base, function (err) {
       if (err) {
