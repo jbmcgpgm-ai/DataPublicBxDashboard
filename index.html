@@ -148,6 +148,7 @@
     color: var(--accent);
     font-weight: 600;
   }
+  header.masthead .sous-titre { font-size: 16px; color: var(--ink-secondary); margin: 0; }
   header.masthead h1 {
     font-size: 30px;
     margin: 2px 0 4px;
@@ -641,6 +642,8 @@
   .lr-modes { border: none; padding: 0; margin: 8px 0; display: grid; gap: 4px; }
   .lr-modes legend { font-weight: 600; margin-bottom: 4px; }
   .lr-champ { display: grid; gap: 4px; margin: 6px 0; font-size: 14px; }
+  .lr-champ[hidden] { display: none; }
+  .lr-aide { margin: 0 0 6px 24px; }
   .lr-champ input, .lr-champ select { font: inherit; padding: 6px 8px; max-width: 260px; }
   .lr-erreur { color: #a3122a; font-weight: 600; min-height: 1em; margin: 4px 0; }
   .lr-boutons { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
@@ -1223,13 +1226,23 @@
   .cc-deplier:hover { background: var(--surface-sunken); }
   .cc-deplier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+  /* Saisie directe des valeurs (2026-11-10, décision 81) */
+  .cc-mode { border: none; padding: 0; margin: 10px 0; display: grid; gap: 4px; }
+  .cc-mode legend { font-weight: 600; margin-bottom: 4px; }
+  .cc-saisie { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+  .cc-saisie-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .cc-saisie-table th, .cc-saisie-table td { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--line); }
+  .cc-saisie-table thead th { position: sticky; top: 0; background: var(--surface-raised, #fff); }
+  .cc-saisie-table input { width: 9em; font: inherit; padding: 4px 6px; }
+
+
 </style>
 
 <div class="app">
   <header class="masthead">
     <span class="eyebrow">Préfiguration</span>
     <h1>Observatoire des données publiques de Bordeaux</h1>
-    <p>220 indicateurs construits à partir de sources publiques (Insee, SDES, Ademe, Caf, DGFiP, Bordeaux Métropole…), comparés entre Bordeaux, Bordeaux Métropole, 7 métropoles de référence et les 8 quartiers officiels, et 11 cartes, dont une qui regroupe les estimations du projet.</p>
+    <p class="sous-titre">À usage interne de la Ville de Bordeaux</p>
   </header>
 
   <div class="layout">
@@ -3259,22 +3272,46 @@ function prechargerCartes() {
   // Palette séquentielle du site ramenée à n couleurs (2 à 7).
   function ciRampe(n) {
     const toutes = ciSeqColors('--ci-seq', 7);
-    if (n >= 7) return toutes.slice(0, 7);
-    return Array.from({ length: n }, function (_, i) { return toutes[Math.round(i * 6 / Math.max(1, n - 1))]; });
+    if (n <= 7) return Array.from({ length: n }, function (_, i) { return toutes[Math.round(i * 6 / Math.max(1, n - 1))]; });
+    // Plus de 7 classes (2026-11-10) : couleurs intermédiaires calculées entre les 7 teintes.
+    const rgb = toutes.map(function (c) {
+      const h = c.trim().replace('#', '');
+      return [0, 2, 4].map(function (k) { return parseInt(h.substr(k, 2), 16); });
+    });
+    return Array.from({ length: n }, function (_, i) {
+      const t = i * 6 / (n - 1), a = Math.floor(t), b = Math.min(6, a + 1), f = t - a;
+      return '#' + [0, 1, 2].map(function (k) {
+        return Math.round(rgb[a][k] + (rgb[b][k] - rgb[a][k]) * f).toString(16).padStart(2, '0');
+      }).join('');
+    });
   }
-  function outilsCarteHtml(code, niveau, reglage, erreur) {
+  function outilsCarteHtml(code, niveau, reglage, erreur, nbZones) {
     const r = reglage || { mode: 'defaut', n: 5, seuils: '' };
-    const choix = [['defaut', niveau === 'carreau' ? 'Par défaut (même nombre de carreaux par classe)' : 'Par défaut (au-dessus / en dessous du repère)'],
-      ['effectif', 'Même nombre de zones par classe'], ['egal', 'Intervalles de même largeur'], ['seuils', 'Seuils que je choisis']];
+    const zones = niveau === 'iris' ? 'IRIS' : niveau === 'carreau' ? 'carreaux' : 'quartiers';
+    const choix = [
+      ['defaut', niveau === 'carreau' ? 'Par défaut' : 'Par défaut : au-dessus / en dessous du repère',
+        niveau === 'carreau' ? 'Classes contenant à peu près le même nombre de carreaux.'
+          : 'Bleu au-dessus du repère (chiffre de Bordeaux ou moyenne), rouge en dessous ; plus la couleur est foncée, plus l’écart est grand.'],
+      ['effectif', 'Même nombre de zones par classe (quantiles)',
+        'Chaque couleur regroupe à peu près autant de ' + zones + ' : par exemple, avec 8 quartiers et 4 classes, 2 quartiers par couleur. ' +
+        'Pas plus de classes que de ' + zones + ' (' + nbZones + ').'],
+      ['egal', 'Intervalles de même largeur',
+        'L’écart entre la plus petite et la plus grande valeur est coupé en parts égales. Une classe peut ne contenir aucune zone : elle reste dans la légende avec (0).'],
+      ['seuils', 'Seuils que je choisis', 'Vous donnez les limites des classes : par exemple « 15 ; 20 ; 25 » donne 4 classes.']];
     let h = '<details class="legende-reglage"' + (reglage || erreur ? ' open' : '') + '><summary>Régler la légende</summary>' +
       '<fieldset class="lr-modes"><legend>Classes</legend>';
-    choix.forEach(function (c) {
-      h += '<label><input type="radio" name="lr-mode" value="' + c[0] + '"' + (r.mode === c[0] ? ' checked' : '') + '> ' + c[1] + '</label>';
+    choix.forEach(function (c, i) {
+      h += '<label class="lr-choix"><input type="radio" name="lr-mode" value="' + c[0] + '" aria-describedby="lr-aide-' + i + '"' +
+        (r.mode === c[0] ? ' checked' : '') + '> ' + c[1] + '</label><p class="cc-aide lr-aide" id="lr-aide-' + i + '">' + c[2] + '</p>';
     });
-    h += '</fieldset><label class="lr-champ">Nombre de classes (deux choix du milieu) <select id="lr-n">';
-    for (let n = 2; n <= 7; n++) h += '<option value="' + n + '"' + (Number(r.n) === n ? ' selected' : '') + '>' + n + '</option>';
-    h += '</select></label><label class="lr-champ">Seuils (séparés par « ; »)<input type="text" id="lr-seuils" inputmode="decimal" ' +
-      'placeholder="ex. 10 ; 15 ; 20" value="' + String(r.seuils || '').replace(/"/g, '&quot;') + '"></label>' +
+    // Chaque champ n'apparaît qu'avec le choix qui l'utilise (2026-11-10).
+    h += '</fieldset><label class="lr-champ" id="lr-champ-n"' + (r.mode === 'effectif' || r.mode === 'egal' ? '' : ' hidden') +
+      '>Nombre de classes <select id="lr-n">';
+    for (let n = 2; n <= 15; n++) h += '<option value="' + n + '"' + (Number(r.n) === n ? ' selected' : '') + '>' + n + '</option>';
+    h += '</select><span class="cc-aide">Au-delà de 7 classes, les couleurs voisines se distinguent difficilement.</span></label>' +
+      '<label class="lr-champ" id="lr-champ-seuils"' + (r.mode === 'seuils' ? '' : ' hidden') + '>Seuils (séparés par « ; », 14 au plus)' +
+      '<input type="text" id="lr-seuils" inputmode="decimal" placeholder="ex. 10 ; 15 ; 20" value="' +
+      String(r.seuils || '').replace(/"/g, '&quot;') + '"></label>' +
       '<p class="lr-erreur" id="lr-erreur" role="alert">' + (erreur || '') + '</p>' +
       '<div class="lr-boutons"><button type="button" class="cc-bouton cc-principal" id="lr-appliquer">Appliquer</button>' +
       '<button type="button" class="cc-bouton" id="lr-defaut">Revenir à la légende par défaut</button></div>' +
@@ -3288,6 +3325,13 @@ function prechargerCartes() {
     return h;
   }
   function brancherOutilsCarte(el, carteId, code) {
+    el.querySelectorAll('input[name="lr-mode"]').forEach(function (rb) {
+      rb.addEventListener('change', function () {
+        const n = el.querySelector('#lr-champ-n'), sl = el.querySelector('#lr-champ-seuils');
+        if (n) n.hidden = !(rb.value === 'effectif' || rb.value === 'egal');
+        if (sl) sl.hidden = rb.value !== 'seuils';
+      });
+    });
     const ap = el.querySelector('#lr-appliquer');
     if (ap) ap.addEventListener('click', function () {
       const mode = (el.querySelector('input[name="lr-mode"]:checked') || {}).value || 'defaut';
@@ -5132,7 +5176,8 @@ function prechargerCartes() {
     if (bornesReglees) {
       const coulReglees = ciRampe(bornesReglees.length + 1);
       colorFor = function (v) { return coulReglees[window.CreateurCarte.classer(v, bornesReglees)]; };
-      legendInfo = { kind: 'sequential', values: values, breaks: bornesReglees, colors: coulReglees, seuils: reglage.mode === 'seuils' };
+      legendInfo = { kind: 'sequential', values: values, breaks: bornesReglees, colors: coulReglees,
+        seuils: reglage.mode === 'seuils', egal: reglage.mode === 'egal' };
     } else if (isDiverging && values.length) {
       const aboveVals = values.filter(function (v) { return v >= divAvg; });
       const belowVals = values.filter(function (v) { return v < divAvg; });
@@ -5310,11 +5355,16 @@ function prechargerCartes() {
         colsWrap.appendChild(colBelow);
         colsWrap.appendChild(colAbove);
         legendRows.appendChild(colsWrap);
-      } else if (legendInfo.values.length && legendInfo.seuils) {
+      } else if (legendInfo.values.length && (legendInfo.seuils || legendInfo.egal)) {
+        // Toutes les classes, y compris vides « (0) » : sinon une classe sans zone
+        // disparaît et le nombre de couleurs semble faux (constaté le 2026-11-10).
         const b = legendInfo.breaks, nbParClasse = b.map(function () { return 0; }).concat([0]);
         legendInfo.values.forEach(function (v) { nbParClasse[window.CreateurCarte.classer(v, b)]++; });
         nbParClasse.forEach(function (nb, k) {
-          const lib = k === 0 ? 'jusqu’à ' + ciFmtValue(b[0], ind.unite)
+          const mini = Math.min.apply(null, legendInfo.values), maxi = Math.max.apply(null, legendInfo.values);
+          const lib = legendInfo.egal
+            ? 'de ' + ciFmtValue(k === 0 ? mini : b[k - 1], ind.unite) + ' à ' + ciFmtValue(k === b.length ? maxi : b[k], ind.unite)
+            : k === 0 ? 'jusqu’à ' + ciFmtValue(b[0], ind.unite)
             : k === b.length ? 'plus de ' + ciFmtValue(b[k - 1], ind.unite)
             : 'plus de ' + ciFmtValue(b[k - 1], ind.unite) + ' à ' + ciFmtValue(b[k], ind.unite);
           const row = document.createElement('div');
@@ -5347,7 +5397,7 @@ function prechargerCartes() {
     } : null;
     const outilsEl = document.getElementById('carte-outils');
     if (outilsEl) {
-      outilsEl.innerHTML = values.length ? outilsCarteHtml(code, niveau, reglage, reglageErreur) : '';
+      outilsEl.innerHTML = values.length ? outilsCarteHtml(code, niveau, reglage, reglageErreur, values.length) : '';
       brancherOutilsCarte(outilsEl, carteId, code);
     }
     const stats = document.getElementById('carte-iris-stats');
@@ -6172,7 +6222,7 @@ function prechargerCartes() {
   // ===== Documentation (2026-11-10, décision 74) =====
   // Sources réellement utilisées (table meta_source, regroupées par site par le
   // générateur), date de version, nature des données, estimations, contact.
-  const DOCUMENTATION = {"version":"2026-11-10","sources":[{"site":"Ademe — data.ademe.fr","site_url":"https://data.ademe.fr","nom":"ADEME – data.ademe.fr, DPE logements existants (dpe03existant)","url":"https://data.ademe.fr/datasets/dpe03existant","millesime":"Continu, extrait 20/07/2026","collecte":"2026-07-20"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"ANCT - Quartiers prioritaires de la politique de la ville (QPV), géographie 2024","url":"https://www.data.gouv.fr/datasets/quartiers-prioritaires-de-la-politique-de-la-ville-qpv","millesime":"QPV 2024 (liste COG 2025 du 2026-07-21 ; contours du 2026-01-15)","collecte":"2026-11-09"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Accidents corporels de la circulation 2012-2019 (titre obsolète)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/accidents-corporels-de-la-circulation-sur-bordeaux-metropole-2012-2019/","millesime":"Extrait 2026-07-31, données 2012-2024 constatées","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Agenda Bordeaux Métropole (met_agenda, OpenAgenda)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/met_agenda/","millesime":"Extrait du jour (événements non terminés)","collecte":"2026-10-07"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Aires de jeux de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_aire_de_jeux_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Aménagement cyclable","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/fv_trvel_l/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Associations égalité et diversité","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/de_asso_egalite_diversite_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Carroyage Filosofi 200m (se_filosofi_200_s)","url":"https://datahub.bordeaux-metropole.fr/explore/dataset/se_filosofi_200_s/","millesime":"Filosofi 2021 (revenus 2021 déclarés 2022, taxe d'habitation 01/01/2020)","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Centres de recyclage en temps réel","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/dechetteries-en-temps-reel/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Cinémas sur Bordeaux Métropole (OpenStreetMap)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/cinemas-sur-bordeaux-metropole/","millesime":"Extrait 2026-10-07","collecte":"2026-10-07"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Composteurs partagés","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/en_composteur_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Contours IRIS géographie 2024 (se_iri24_s)","url":"https://datahub.bordeaux-metropole.fr/explore/dataset/se_iri24_s/","millesime":"Géographie IRIS 2024","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - ERP de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_erp/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Emplacements d'apport volontaire (déchets)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/en_empac_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Equipement public (to_eqpub_p)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/to_eqpub_p/","millesime":"Extrait 2026-07-30 (mise à jour continue)","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Espaces canins","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_topo_surf_entretien_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Espaces naturels ouverts au public","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_parc_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Etablissements du domaine sanitaire et social","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/etablissements-du-domaine-sanitaire-et-social-bordeaux-metropole/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Fontaines d'eau potable de la ville de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_fontaines_eau_potable/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Indice de confort thermique urbain","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ri_ictu_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Lieux d'activité des associations de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_associations_lieux_activite/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Nichoirs de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_abrisfaune/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Observatoire Métropolitain des inégalités numériques","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/de_observatoire_inclusion_numerique_a/","millesime":"Enquête 2023","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Parcs, jardins et squares de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_parcjardin/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Patrimoine arboré de Bordeaux Métropole","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_arbre_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Permis de louer / Permis de diviser (u_permis_location_s)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/u_permis_location_s/","millesime":"Extrait 2026-07-30","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Tronçon du filaire des voies (fv_tronc_l)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/fv_tronc_l/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Vulnérabilité à la chaleur","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ri_vulnerabilite_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub – Quartiers des communes (se_quart_s)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/se_quart_s/","millesime":"Signalé 'en cours de validation'","collecte":"2026-07-20"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Cartographie nationale des lieux d'inclusion numérique","url":"https://www.data.gouv.fr/datasets/lieux-de-mediation-numerique-sur-le-territoire-national-fournis-par-data-inclusion-1/","millesime":"Extrait 20/07/2026","collecte":"2026-07-20"},{"site":"Caf — data.caf.fr","site_url":"https://data.caf.fr","nom":"Cnaf - Allocataires selon la prestation et la situation familiale [IRIS] (s_sitfam_iris_f)","url":"https://data.caf.fr/explore/dataset/s_sitfam_iris_f/","millesime":"Décembre 2024","collecte":"2026-11-10"},{"site":"DREES (ministère de la Santé)","site_url":"https://data.drees.solidarites-sante.gouv.fr","nom":"DREES - APL aux structures médico-sociales pour personnes âgées","url":"https://data.drees.solidarites-sante.gouv.fr/explore/dataset/accessibilite-potentielle-localisee-apl-aux-structures-medico-sociales-destinees/","millesime":"Mise à jour 2021-12-08 (ancienne)","collecte":"2026-11-09"},{"site":"DREES (ministère de la Santé)","site_url":"https://data.drees.solidarites-sante.gouv.fr","nom":"DREES - Accessibilité potentielle localisée (APL) aux professionnels de santé","url":"https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/","millesime":"2022 à 2024 (mise à jour 2026-07-22)","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"DVF géolocalisées (Etalab/DGFiP) - demandes de valeurs foncières","url":"https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres-geolocalisees","millesime":"2021-2025 (fenêtre glissante 5 ans, fichiers par commune)","collecte":"2026-07-30"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ecolab — indicateurs territoriaux (ecologie.data.gouv.fr)","url":"https://ecologie.data.gouv.fr/indicators","millesime":"variable selon l'indicateur (séries annuelles, jusqu'à 2006-2026)","collecte":"2026-09-24"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"FINESS - Extraction du fichier des établissements géolocalisés","url":"https://www.data.gouv.fr/datasets/finess-extraction-du-fichier-des-etablissements","millesime":"Stock du 2026-05-04","collecte":"2026-11-09"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Filosofi 2021 (IRIS) – Revenus localisés sociaux et fiscaux","url":"https://www.insee.fr/fr/statistiques/8229323","millesime":"2021","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Filosofi 2023 ('Filosofi 2') – Revenus et pauvreté des ménages","url":"https://www.insee.fr/fr/statistiques/8984752?sommaire=8984758","millesime":"2023 (rupture méthodologique vs 2012-2021)","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee - Projections de population 2018-2070 pour les départements (Omphale 2022)","url":"https://www.insee.fr/fr/statistiques/7747107","millesime":"Omphale 2022, scénario central, 2018 à 2070 (tableaux détaillés, mise à jour du 2024-01-08)","collecte":"2026-11-10"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Activité des résidents","url":"https://www.insee.fr/fr/statistiques/8647006","millesime":"RP2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Activité des résidents, millésime 2012","url":"https://www.insee.fr/fr/statistiques/2028654","millesime":"RP2012 (géographie 01/01/2014)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Couples-Familles-Ménages","url":"https://www.insee.fr/fr/statistiques/8647008","millesime":"RP2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Couples-Familles-Ménages, millésime 2011","url":"https://www.insee.fr/fr/statistiques/2028567","millesime":"RP2011 (géographie 01/01/2013)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Logement","url":"https://www.insee.fr/fr/statistiques/8647012","millesime":"RP2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Population","url":"https://www.insee.fr/fr/statistiques/8647014","millesime":"RP2022 (géographie 01/01/2024)","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Population, millésime 2012","url":"https://www.insee.fr/fr/statistiques/2028582","millesime":"RP2012 (géographie 01/01/2014)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Comparateur de territoires","url":"https://www.insee.fr/fr/statistiques/1405599","millesime":"RP2023 / emploi salarié 2024 / état civil 2025","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Migrations résidentielles RP2023","url":"https://www.insee.fr/fr/statistiques/8998241","millesime":"RP2023 (résidence actuelle vs résidence 1 an avant)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Migrations résidentielles, fichier détail commune x pays de résidence antérieure","url":"https://www.insee.fr/fr/statistiques/8589858","millesime":"RP2022 (microdonnées individuelles, pondération IPONDI)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Mobilités professionnelles (flux domicile-travail)","url":"https://www.insee.fr/fr/statistiques/8582949","millesime":"2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Population légale RP2023 (fichier d'ensemble des populations)","url":"https://www.insee.fr/fr/statistiques/8680726?sommaire=8681011","millesime":"RP2023, en vigueur au 01/01/2026 (décret n°2025-1362 du 26/12/2025)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Table d'appartenance géographique des IRIS","url":"https://www.insee.fr/fr/information/7708995","millesime":"Géographie IRIS en vigueur au 01/01/2024","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – État civil, naissances/décès domiciliés par commune","url":"https://www.insee.fr/fr/statistiques/1893255","millesime":"2008-2025 (géographie 01/01/2026)","collecte":"2026-07-20"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Culture (DEPS) - Base des lieux et équipements culturels (Basilic)","url":"https://www.data.gouv.fr/datasets/base-des-lieux-et-equipements-culturels-basilic","millesime":"Fichier du 2026-02-18","collecte":"2026-10-07"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Culture - Immeubles protégés au titre des Monuments historiques (Mérimée)","url":"https://www.data.gouv.fr/datasets/immeubles-proteges-au-titre-des-monuments-historiques-2","millesime":"Fichier du 2026-10-01","collecte":"2026-10-07"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Culture - Répertoire des Musées de France (Muséofile)","url":"https://www.data.gouv.fr/datasets/musees-de-france-base-museofile","millesime":"Fichier du 2026-10-05","collecte":"2026-10-07"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Transition écologique - Carte des loyers 2025 (loyers d'annonce par commune)","url":"https://www.data.gouv.fr/datasets/carte-des-loyers-indicateurs-de-loyers-dannonce-par-commune-en-2025","millesime":"2025 (publié le 2025-12-11)","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Transition écologique - Logements vacants du parc privé (LOVAC)","url":"https://www.data.gouv.fr/datasets/logements-vacants-du-parc-prive-par-commune-departement-region-france-de-2020-a-2026","millesime":"Millésimes 2020 à 2026 (vacance au 1er janvier de l'année précédente)","collecte":"2026-11-09"},{"site":"SDES (ministère de la Transition écologique)","site_url":"https://www.statistiques.developpement-durable.gouv.fr","nom":"SDES — Données locales de consommation d'énergie à la maille IRIS (API DiDo)","url":"https://www.statistiques.developpement-durable.gouv.fr/catalogue?page=dataset&datasetId=610244c9e436671e84ec5da8","millesime":"2018 à 2024 (électricité et gaz naturel)","collecte":"2026-09-24"},{"site":"SDES (ministère de la Transition écologique)","site_url":"https://www.statistiques.developpement-durable.gouv.fr","nom":"SDES — RPLS, données détaillées au logement (API DiDo)","url":"https://www.statistiques.developpement-durable.gouv.fr/catalogue?page=dataset&datasetId=6390f7cb84f0679b04942fc2","millesime":"RPLS au 01/01/2025","collecte":"2026-09-24"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"SSMSI - Délinquance enregistrée par la police et la gendarmerie, base communale","url":"https://www.data.gouv.fr/datasets/bases-statistiques-communale-departementale-et-regionale-de-la-delinquance-enregistree-par-la-police-et-la-gendarmerie-nationales","millesime":"2016 à 2025, géographie 2026 (édition 2026-07-09)","collecte":"2026-11-09"},{"site":"Opendatasoft — portail public","site_url":"https://public.opendatasoft.com","nom":"Sirene (Insee) - établissements actifs, miroir Opendatasoft","url":"https://public.opendatasoft.com/explore/dataset/economicref-france-sirene-v3/","millesime":"Extrait 2026-07-30 (dernier traitement source 2025-12-05)","collecte":"2026-07-30"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Éducation nationale - Effectifs d'élèves par niveau et nombre de classes par école","url":"https://www.data.gouv.fr/datasets/effectifs-deleves-par-niveau-et-nombre-de-classes-par-ecole-date-dobservation-au-debut-du-mois-doctobre-chaque-annee","millesime":"Rentrées 2011 à 2025","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Éducation nationale - Indices de position sociale (IPS) des écoles, à partir de 2022","url":"https://www.data.gouv.fr/datasets/indices-de-position-sociale-dans-les-ecoles-a-partir-de-2022","millesime":"Rentrées 2022-2023 à 2024-2025","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Éducation nationale - Établissements de l'éducation prioritaire","url":"https://www.data.gouv.fr/datasets/etablissements-de-leducation-prioritaire","millesime":"Carte 2022-2023 (mise à jour 2026-02-02)","collecte":"2026-11-09"}]};
+  const DOCUMENTATION = {"version":"2026-11-10","sources":[{"site":"Ademe — data.ademe.fr","site_url":"https://data.ademe.fr","nom":"ADEME – data.ademe.fr, DPE logements existants (dpe03existant)","url":"https://data.ademe.fr/datasets/dpe03existant","millesime":"Continu, extrait 20/07/2026","collecte":"2026-07-20"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"ANCT - Quartiers prioritaires de la politique de la ville (QPV), géographie 2024","url":"https://www.data.gouv.fr/datasets/quartiers-prioritaires-de-la-politique-de-la-ville-qpv","millesime":"QPV 2024 (liste COG 2025 du 2026-07-21 ; contours du 2026-01-15)","collecte":"2026-11-09"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Accidents corporels de la circulation 2012-2019 (titre obsolète)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/accidents-corporels-de-la-circulation-sur-bordeaux-metropole-2012-2019/","millesime":"Extrait 2026-07-31, données 2012-2024 constatées","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Agenda Bordeaux Métropole (met_agenda, OpenAgenda)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/met_agenda/","millesime":"Extrait du jour (événements non terminés)","collecte":"2026-10-07"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Aires de jeux de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_aire_de_jeux_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Aménagement cyclable","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/fv_trvel_l/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Associations égalité et diversité","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/de_asso_egalite_diversite_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Carroyage Filosofi 200m (se_filosofi_200_s)","url":"https://datahub.bordeaux-metropole.fr/explore/dataset/se_filosofi_200_s/","millesime":"Filosofi 2021 (revenus 2021 déclarés 2022, taxe d'habitation 01/01/2020)","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Centres de recyclage en temps réel","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/dechetteries-en-temps-reel/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Cinémas sur Bordeaux Métropole (OpenStreetMap)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/cinemas-sur-bordeaux-metropole/","millesime":"Extrait 2026-10-07","collecte":"2026-10-07"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Composteurs partagés","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/en_composteur_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Contours IRIS géographie 2024 (se_iri24_s)","url":"https://datahub.bordeaux-metropole.fr/explore/dataset/se_iri24_s/","millesime":"Géographie IRIS 2024","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - ERP de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_erp/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Emplacements d'apport volontaire (déchets)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/en_empac_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Equipement public (to_eqpub_p)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/to_eqpub_p/","millesime":"Extrait 2026-07-30 (mise à jour continue)","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Espaces canins","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_topo_surf_entretien_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Espaces naturels ouverts au public","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_parc_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Etablissements du domaine sanitaire et social","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/etablissements-du-domaine-sanitaire-et-social-bordeaux-metropole/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Fontaines d'eau potable de la ville de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_fontaines_eau_potable/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Indice de confort thermique urbain","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ri_ictu_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Lieux d'activité des associations de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_associations_lieux_activite/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Nichoirs de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_abrisfaune/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Observatoire Métropolitain des inégalités numériques","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/de_observatoire_inclusion_numerique_a/","millesime":"Enquête 2023","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Parcs, jardins et squares de Bordeaux","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/bor_parcjardin/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Patrimoine arboré de Bordeaux Métropole","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ec_arbre_p/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Permis de louer / Permis de diviser (u_permis_location_s)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/u_permis_location_s/","millesime":"Extrait 2026-07-30","collecte":"2026-07-30"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Tronçon du filaire des voies (fv_tronc_l)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/fv_tronc_l/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub - Vulnérabilité à la chaleur","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/ri_vulnerabilite_s/","millesime":"Extrait 2026-07-31","collecte":"2026-07-31"},{"site":"Bordeaux Métropole — open data","site_url":"https://opendata.bordeaux-metropole.fr","nom":"Bordeaux Métropole DataHub – Quartiers des communes (se_quart_s)","url":"https://opendata.bordeaux-metropole.fr/explore/dataset/se_quart_s/","millesime":"Signalé 'en cours de validation'","collecte":"2026-07-20"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Cartographie nationale des lieux d'inclusion numérique","url":"https://www.data.gouv.fr/datasets/lieux-de-mediation-numerique-sur-le-territoire-national-fournis-par-data-inclusion-1/","millesime":"Extrait 20/07/2026","collecte":"2026-07-20"},{"site":"Caf — data.caf.fr","site_url":"https://data.caf.fr","nom":"Cnaf - Allocataires selon la prestation et la situation familiale [IRIS] (s_sitfam_iris_f)","url":"https://data.caf.fr/explore/dataset/s_sitfam_iris_f/","millesime":"Décembre 2024","collecte":"2026-11-10"},{"site":"DREES (ministère de la Santé)","site_url":"https://data.drees.solidarites-sante.gouv.fr","nom":"DREES - APL aux structures médico-sociales pour personnes âgées","url":"https://data.drees.solidarites-sante.gouv.fr/explore/dataset/accessibilite-potentielle-localisee-apl-aux-structures-medico-sociales-destinees/","millesime":"Mise à jour 2021-12-08 (ancienne)","collecte":"2026-11-09"},{"site":"DREES (ministère de la Santé)","site_url":"https://data.drees.solidarites-sante.gouv.fr","nom":"DREES - Accessibilité potentielle localisée (APL) aux professionnels de santé","url":"https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/","millesime":"2022 à 2024 (mise à jour 2026-07-22)","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"DVF géolocalisées (Etalab/DGFiP) - demandes de valeurs foncières","url":"https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres-geolocalisees","millesime":"2021-2025 (fenêtre glissante 5 ans, fichiers par commune)","collecte":"2026-07-30"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ecolab — indicateurs territoriaux (ecologie.data.gouv.fr)","url":"https://ecologie.data.gouv.fr/indicators","millesime":"variable selon l'indicateur (séries annuelles, jusqu'à 2006-2026)","collecte":"2026-09-24"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"FINESS - Extraction du fichier des établissements géolocalisés","url":"https://www.data.gouv.fr/datasets/finess-extraction-du-fichier-des-etablissements","millesime":"Stock du 2026-05-04","collecte":"2026-11-09"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Filosofi 2021 (IRIS) – Revenus localisés sociaux et fiscaux","url":"https://www.insee.fr/fr/statistiques/8229323","millesime":"2021","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Filosofi 2023 ('Filosofi 2') – Revenus et pauvreté des ménages","url":"https://www.insee.fr/fr/statistiques/8984752?sommaire=8984758","millesime":"2023 (rupture méthodologique vs 2012-2021)","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee - Projections de population 2018-2070 pour les départements (Omphale 2022)","url":"https://www.insee.fr/fr/statistiques/7747107","millesime":"Omphale 2022, scénario central, 2018 à 2070 (tableaux détaillés, mise à jour du 2024-01-08)","collecte":"2026-11-10"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Activité des résidents","url":"https://www.insee.fr/fr/statistiques/8647006","millesime":"RP2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Activité des résidents, millésime 2012","url":"https://www.insee.fr/fr/statistiques/2028654","millesime":"RP2012 (géographie 01/01/2014)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Couples-Familles-Ménages","url":"https://www.insee.fr/fr/statistiques/8647008","millesime":"RP2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Couples-Familles-Ménages, millésime 2011","url":"https://www.insee.fr/fr/statistiques/2028567","millesime":"RP2011 (géographie 01/01/2013)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Logement","url":"https://www.insee.fr/fr/statistiques/8647012","millesime":"RP2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Population","url":"https://www.insee.fr/fr/statistiques/8647014","millesime":"RP2022 (géographie 01/01/2024)","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee RP – Base infracommunale Population, millésime 2012","url":"https://www.insee.fr/fr/statistiques/2028582","millesime":"RP2012 (géographie 01/01/2014)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Comparateur de territoires","url":"https://www.insee.fr/fr/statistiques/1405599","millesime":"RP2023 / emploi salarié 2024 / état civil 2025","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Migrations résidentielles RP2023","url":"https://www.insee.fr/fr/statistiques/8998241","millesime":"RP2023 (résidence actuelle vs résidence 1 an avant)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Migrations résidentielles, fichier détail commune x pays de résidence antérieure","url":"https://www.insee.fr/fr/statistiques/8589858","millesime":"RP2022 (microdonnées individuelles, pondération IPONDI)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Mobilités professionnelles (flux domicile-travail)","url":"https://www.insee.fr/fr/statistiques/8582949","millesime":"2022","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Population légale RP2023 (fichier d'ensemble des populations)","url":"https://www.insee.fr/fr/statistiques/8680726?sommaire=8681011","millesime":"RP2023, en vigueur au 01/01/2026 (décret n°2025-1362 du 26/12/2025)","collecte":"2026-07-21"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – Table d'appartenance géographique des IRIS","url":"https://www.insee.fr/fr/information/7708995","millesime":"Géographie IRIS en vigueur au 01/01/2024","collecte":"2026-07-20"},{"site":"Insee","site_url":"https://www.insee.fr","nom":"Insee – État civil, naissances/décès domiciliés par commune","url":"https://www.insee.fr/fr/statistiques/1893255","millesime":"2008-2025 (géographie 01/01/2026)","collecte":"2026-07-20"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Culture (DEPS) - Base des lieux et équipements culturels (Basilic)","url":"https://www.data.gouv.fr/datasets/base-des-lieux-et-equipements-culturels-basilic","millesime":"Fichier du 2026-02-18","collecte":"2026-10-07"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Culture - Immeubles protégés au titre des Monuments historiques (Mérimée)","url":"https://www.data.gouv.fr/datasets/immeubles-proteges-au-titre-des-monuments-historiques-2","millesime":"Fichier du 2026-10-01","collecte":"2026-10-07"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Culture - Répertoire des Musées de France (Muséofile)","url":"https://www.data.gouv.fr/datasets/musees-de-france-base-museofile","millesime":"Fichier du 2026-10-05","collecte":"2026-10-07"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Transition écologique - Carte des loyers 2025 (loyers d'annonce par commune)","url":"https://www.data.gouv.fr/datasets/carte-des-loyers-indicateurs-de-loyers-dannonce-par-commune-en-2025","millesime":"2025 (publié le 2025-12-11)","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Ministère de la Transition écologique - Logements vacants du parc privé (LOVAC)","url":"https://www.data.gouv.fr/datasets/logements-vacants-du-parc-prive-par-commune-departement-region-france-de-2020-a-2026","millesime":"Millésimes 2020 à 2026 (vacance au 1er janvier de l'année précédente)","collecte":"2026-11-09"},{"site":"SDES (ministère de la Transition écologique)","site_url":"https://www.statistiques.developpement-durable.gouv.fr","nom":"SDES — Données locales de consommation d'énergie à la maille IRIS (API DiDo)","url":"https://www.statistiques.developpement-durable.gouv.fr/catalogue?page=dataset&datasetId=610244c9e436671e84ec5da8","millesime":"2018 à 2024 (électricité et gaz naturel)","collecte":"2026-09-24"},{"site":"SDES (ministère de la Transition écologique)","site_url":"https://www.statistiques.developpement-durable.gouv.fr","nom":"SDES — RPLS, données détaillées au logement (API DiDo)","url":"https://www.statistiques.developpement-durable.gouv.fr/catalogue?page=dataset&datasetId=6390f7cb84f0679b04942fc2","millesime":"RPLS au 01/01/2025","collecte":"2026-09-24"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"SSMSI - Délinquance enregistrée par la police et la gendarmerie, base communale","url":"https://www.data.gouv.fr/datasets/bases-statistiques-communale-departementale-et-regionale-de-la-delinquance-enregistree-par-la-police-et-la-gendarmerie-nationales","millesime":"2016 à 2025, géographie 2026 (édition 2026-07-09)","collecte":"2026-11-09"},{"site":"Opendatasoft — portail public","site_url":"https://public.opendatasoft.com","nom":"Sirene (Insee) - établissements actifs, miroir Opendatasoft","url":"https://public.opendatasoft.com/explore/dataset/economicref-france-sirene-v3/","millesime":"Extrait 2026-07-30 (dernier traitement source 2025-12-05)","collecte":"2026-07-30"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Éducation nationale - Effectifs d'élèves par niveau et nombre de classes par école","url":"https://www.data.gouv.fr/datasets/effectifs-deleves-par-niveau-et-nombre-de-classes-par-ecole-date-dobservation-au-debut-du-mois-doctobre-chaque-annee","millesime":"Rentrées 2011 à 2025","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Éducation nationale - Indices de position sociale (IPS) des écoles, à partir de 2022","url":"https://www.data.gouv.fr/datasets/indices-de-position-sociale-dans-les-ecoles-a-partir-de-2022","millesime":"Rentrées 2022-2023 à 2024-2025","collecte":"2026-11-09"},{"site":"data.gouv.fr (plateforme nationale)","site_url":"https://www.data.gouv.fr","nom":"Éducation nationale - Établissements de l'éducation prioritaire","url":"https://www.data.gouv.fr/datasets/etablissements-de-leducation-prioritaire","millesime":"Carte 2022-2023 (mise à jour 2026-02-02)","collecte":"2026-11-09"}],"formulaire_url":""};
   function dateFr(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
     return m ? m[3] + '/' + m[2] + '/' + m[1] : (iso || '—');
@@ -6188,6 +6238,10 @@ function prechargerCartes() {
     let h = '<div class="panel card doc-page"><h2 id="doc-titre" tabindex="-1">Documentation</h2>' +
       '<p class="doc-version">Version en ligne du <strong>' + dateFr(DOCUMENTATION.version) + '</strong>.</p>' +
       '<h3>À propos du site</h3>' +
+      // Présentation chiffrée, retirée de l'en-tête (2026-11-10, demande du porteur).
+      '<p class="doc-presentation">220 indicateurs construits à partir de sources publiques (Insee, SDES, Ademe, Caf, DGFiP, ' +
+      'Bordeaux Métropole…), comparés entre Bordeaux, Bordeaux Métropole, 7 métropoles de référence et les 8 quartiers officiels, et ' +
+      '11 cartes, dont une qui regroupe les estimations du projet.</p>' +
       '<ul class="doc-liste">' +
       '<li>Préfiguration d’un observatoire des données publiques de Bordeaux. Il reprend notamment les indicateurs de l’analyse des besoins sociaux (ABS).</li>' +
       '<li>Reconstitution technique indépendante (projet data_public / ABS_Bdx) : ce n’est pas un document officiel de la Ville de Bordeaux.</li>' +
@@ -6207,6 +6261,9 @@ function prechargerCartes() {
       '<details class="doc-details"><summary><h3>Lexique</h3></summary><dl class="doc-lexique"><dt>IRIS</dt><dd>Petit découpage statistique de l’Insee (« îlots regroupés pour l’information statistique »), d’environ 2 000 habitants. Bordeaux en compte 88.</dd><dt>Quartier</dt><dd>Un des 8 quartiers officiels de la Ville de Bordeaux. Sur le site, un quartier regroupe des IRIS entiers.</dd><dt>Carreau</dt><dd>Carré de 200 mètres de côté, utilisé par l’Insee pour diffuser les revenus et la population très finement.</dd><dt>EPCI, métropole</dt><dd>Établissement public de coopération intercommunale : groupement de communes. Ici, les métropoles (Bordeaux Métropole compte 28 communes).</dd><dt>Ville-centre</dt><dd>Commune principale d’une métropole : Bordeaux, Nantes, Lille…</dd><dt>Recensement (RP)</dt><dd>Recensement de la population de l’Insee. « RP2022 » réunit les enquêtes de 2020 à 2024, ramenées à l’année 2022.</dd><dt>Filosofi</dt><dd>Source de l’Insee sur les revenus et la pauvreté, tirée des déclarations fiscales et des prestations sociales.</dd><dt>Millésime</dt><dd>Année (ou période) à laquelle se rapportent les données.</dd><dt>Estimation du projet</dt><dd>Chiffre calculé par le projet à partir de données ouvertes, et non publié tel quel par un producteur officiel. Toujours signalé et expliqué.</dd><dt>Classes de même effectif</dt><dd>Légende par défaut : les zones sont réparties en classes qui contiennent à peu près le même nombre de zones.</dd><dt>QPV</dt><dd>Quartier prioritaire de la politique de la ville, défini par l’État.</dd><dt>REP, REP+</dt><dd>Réseaux d’éducation prioritaire de l’Éducation nationale.</dd><dt>APL</dt><dd>Accessibilité potentielle localisée (DREES) : offre de soins accessible aux habitants d’une commune, compte tenu des communes voisines et de l’âge de la population.</dd><dt>ETP</dt><dd>Équivalent temps plein : quantité de travail d’une personne à temps plein.</dd></dl></details>' +
       '<h3>Contact</h3>' +
       '<p>Pour un besoin particulier ou une erreur repérée, contactez la <strong>mission data/IA de la Ville de Bordeaux</strong>.</p>' +
+      (DOCUMENTATION.formulaire_url ? '<p><a class="cc-bouton cc-principal doc-contact" href="' + DOCUMENTATION.formulaire_url +
+        '" target="_blank" rel="noopener">Laisser un message<span class="sr-only"> (formulaire, nouvelle fenêtre)</span></a></p>' +
+        '<p class="cc-aide">Le formulaire est hébergé par la Ville (Microsoft Forms). Vous n’êtes pas obligé de donner votre nom.</p>' : '') +
       '<h3>Sources des données (' + DOCUMENTATION.sources.length + ')</h3>' +
       '<p>Regroupées par site. « Données » indique l’année ou la période des données ; « Récupérées le », la date à laquelle le projet les a téléchargées. ' +
       'Les liens ouvrent la page de la source sur le site du producteur (nouvelle fenêtre).</p>';
@@ -6247,7 +6304,8 @@ function prechargerCartes() {
   };
 
   renderList('', false);
-  selectIndicateur('POP_TOTAL');
+  // Accueil : la première carte du menu (« tout dans Cartes », 2026-11-10), plus la fiche POP_TOTAL.
+  selectCarte(CARTE_DATA.cartes[0].id);
   // Page d'accueil mobile (2026-08-25, demande explicite) : selectIndicateur()
   // ci-dessus appelle showMobileDetail() (comportement voulu quand on clique
   // vraiment un indicateur), ce qui atterrit directement sur la fiche
@@ -6477,6 +6535,21 @@ function prechargerCartes() {
    * @returns {{valeurs: Object, inconnus, nonNumeriques, absentes: string[],
    *   doublons: Array<{code, choisie: number|null, lignes: Array<{ligne, valeur}>}>}}
    */
+  /**
+   * Saisie directe des valeurs (2026-11-10, décision 81) : construit la même
+   * table qu'un fichier CSV lu (colonnes « code » et « valeur »), une ligne par
+   * zone renseignée, dans l'ordre des codes. Les cases vides sont ignorées ;
+   * les contrôles (nombres, zones sans valeur) sont ceux d'un fichier.
+   */
+  function tableDepuisSaisie(maille, saisies) {
+    const lignes = [];
+    Object.keys(maille.zones).sort().forEach(function (code) {
+      const t = String(saisies[code] == null ? '' : saisies[code]).trim();
+      if (t !== '') lignes.push({ numero: lignes.length + 1, cellules: [code, t] });
+    });
+    return { colonnes: ['code', 'valeur'], lignes: lignes };
+  }
+
   function associer(table, maille, colCode, colValeur, choixDoublons) {
     choixDoublons = choixDoublons || {};
     const parCode = {};
@@ -6519,7 +6592,8 @@ function prechargerCartes() {
   // Brique 3 — Classes, légende et dessin de la carte (SVG)
   // ---------------------------------------------------------------------
   const NB_CLASSES_AUTO = 5;           // décision 4
-  const NB_SEUILS_MAX = 6;             // 7 couleurs au plus, lisibles
+  const NB_SEUILS_MAX = 6;
+  const NB_CLASSES_LEGENDE_MAX = 15;   // légende réglable des cartes du site (2026-11-10)             // 7 couleurs au plus, lisibles
   // Rampe bleue du site (variables --ci-seq-*), du plus clair au plus foncé.
   const RAMPE = ['#b7d3f6', '#86b6ef', '#6da7ec', '#3987e5', '#2a78d6', '#1c5cab', '#0d366b'];
 
@@ -6528,12 +6602,13 @@ function prechargerCartes() {
    * '' → null (classes automatiques). Erreur explicite si un seuil n'est pas
    * un nombre, si l'ordre n'est pas croissant, ou s'il y en a trop.
    */
-  function lireSeuils(texte) {
+  function lireSeuils(texte, maxSeuils) {
+    const max = maxSeuils || NB_SEUILS_MAX;
     const morceaux = String(texte == null ? '' : texte).split(/[;\n]/)
       .map(function (s) { return s.trim(); }).filter(function (s) { return s !== ''; });
     if (!morceaux.length) return null;
-    if (morceaux.length > NB_SEUILS_MAX) {
-      throw new Error(NB_SEUILS_MAX + ' seuils au maximum (' + morceaux.length + ' saisis).');
+    if (morceaux.length > max) {
+      throw new Error(max + ' seuils au maximum (' + morceaux.length + ' saisis).');
     }
     const seuils = morceaux.map(function (m) {
       const v = lireNombre(m);
@@ -6562,17 +6637,18 @@ function prechargerCartes() {
    *  - 'effectif' : n classes contenant à peu près le même nombre de zones ;
    *  - 'egal' : n classes de même largeur entre le minimum et le maximum ;
    *  - 'seuils' : seuils saisis (texte « 10 ; 15 ; 20 », lu par lireSeuils).
-   * n est borné à 2..7. Renvoie les bornes (n - 1 valeurs croissantes).
+   * n est borné à 2..15 (2026-11-10 : jusqu'à 15 classes, demande du porteur) ;
+   * en « effectif », il ne dépasse pas le nombre de zones. Renvoie les bornes.
    */
   function bornesLegende(valeurs, reglage) {
     if (!valeurs.length) return [];
     if (reglage.mode === 'seuils') {
-      const s = lireSeuils(reglage.seuils);
+      const s = lireSeuils(reglage.seuils, NB_CLASSES_LEGENDE_MAX - 1);
       if (!s) throw new Error('Saisissez au moins un seuil (par exemple : 10 ; 15 ; 20).');
       return s;
     }
-    const n = Math.max(2, Math.min(7, Math.round(Number(reglage.n) || 5)));
-    if (reglage.mode === 'effectif') return bornesParEffectif(valeurs, n);
+    const n = Math.max(2, Math.min(NB_CLASSES_LEGENDE_MAX, Math.round(Number(reglage.n) || 5)));
+    if (reglage.mode === 'effectif') return bornesParEffectif(valeurs, Math.min(n, valeurs.length));
     if (reglage.mode === 'egal') {
       const min = Math.min.apply(null, valeurs), max = Math.max.apply(null, valeurs);
       const b = [];
@@ -7239,7 +7315,8 @@ function prechargerCartes() {
     lireCsv: lireCsv,
     lireNombre: lireNombre,
     proposerColonneCode: proposerColonneCode,
-    associer: associer
+    associer: associer,
+    tableDepuisSaisie: tableDepuisSaisie
   };
 }));
 
@@ -7262,7 +7339,8 @@ function prechargerCartes() {
   const LICENCES = ['Licence Ouverte 2.0 (Etalab)', 'ODbL', 'Autre', 'Je ne sais pas'];
 
   // État de la séance (en mémoire seulement : rien n'est enregistré).
-  const etat = { mailles: null, table: null, nomFichier: '', choixDoublons: {}, resultat: null, carte: null };
+  const etat = { mailles: null, table: null, nomFichier: '', choixDoublons: {}, resultat: null, carte: null,
+    mode: 'fichier', saisies: {} };   // mode : 'fichier' ou 'saisie' (saisie directe, 2026-11-10)
 
   function $(id) { return document.getElementById(id); }
 
@@ -7278,12 +7356,17 @@ function prechargerCartes() {
       '<form id="cc-form" method="dialog" novalidate>' +
       '<div class="cc-dialog-entete"><h2 id="cc-dialog-titre">Créer ma carte</h2>' +
       '<button type="button" class="cc-fermer" id="cc-fermer" aria-label="Fermer la boîte de dialogue">×</button></div>' +
-      '<p class="cc-intro">Votre fichier reste sur votre ordinateur : rien n’est envoyé sur Internet. Les champs marqués <span aria-hidden="true">*</span><span class="cc-sr">d’un astérisque</span> sont obligatoires.</p>' +
+      '<p class="cc-intro">Votre fichier et vos valeurs restent sur votre ordinateur : rien n’est envoyé sur Internet. Les champs marqués <span aria-hidden="true">*</span><span class="cc-sr">d’un astérisque</span> sont obligatoires.</p>' +
 
-      '<fieldset><legend>1. Le découpage et le fichier</legend>' +
+      '<fieldset><legend>1. Le découpage et les données</legend>' +
       '<label for="cc-maille">Découpage géographique de vos données <span aria-hidden="true">*</span></label>' +
       '<select id="cc-maille" aria-describedby="cc-maille-aide"></select>' +
       '<p class="cc-aide" id="cc-maille-aide"></p>' +
+      // Deux façons de fournir les données (2026-11-10, décision 81).
+      '<fieldset class="cc-mode"><legend>Vos données <span aria-hidden="true">*</span></legend>' +
+      '<label><input type="radio" name="cc-mode" value="fichier" checked> Choisir un fichier CSV</label>' +
+      '<label><input type="radio" name="cc-mode" value="saisie"> Saisir les valeurs ici, zone par zone</label></fieldset>' +
+      '<div id="cc-bloc-fichier">' +
       '<p class="cc-aide"><button type="button" class="cc-lien" id="cc-modele">Télécharger un modèle de fichier pour ce découpage</button></p>' +
       '<label for="cc-fichier">Fichier CSV <span aria-hidden="true">*</span></label>' +
       '<input type="file" id="cc-fichier" accept=".csv,text/csv" aria-describedby="cc-fichier-aide cc-fichier-err" required>' +
@@ -7300,6 +7383,12 @@ function prechargerCartes() {
       '<div id="cc-colonnes" hidden>' +
       '<label for="cc-col-code">Colonne qui contient les codes des zones <span aria-hidden="true">*</span></label><select id="cc-col-code"></select>' +
       '<label for="cc-col-valeur">Colonne qui contient les valeurs à cartographier <span aria-hidden="true">*</span></label><select id="cc-col-valeur"></select>' +
+      '</div>' +
+      '</div>' +
+      '<div id="cc-bloc-saisie" hidden>' +
+      '<p class="cc-aide" id="cc-saisie-aide">Une case par zone. Laissez vide une zone sans valeur. Nombres avec une virgule ou un point (exemple : 12,5).</p>' +
+      '<div class="cc-saisie" id="cc-saisie"></div>' +
+      '<p class="cc-erreur" id="cc-saisie-err" role="alert"></p>' +
       '</div>' +
       '<div id="cc-rapport" class="cc-rapport" aria-live="polite"></div>' +
       '</fieldset>' +
@@ -7361,7 +7450,21 @@ function prechargerCartes() {
     // Par défaut : les quartiers (choix par défaut des cartes du site).
     maille.value = 'quartier';
     majAideMaille();
-    maille.addEventListener('change', function () { majAideMaille(); proposerColonnes(); majRapport(); majFondMaille(); });
+    maille.addEventListener('change', function () {
+      majAideMaille();
+      if (etat.mode === 'saisie') { construireSaisie(); lireSaisie(); } else proposerColonnes();
+      majRapport(); majFondMaille();
+    });
+    document.querySelectorAll('input[name="cc-mode"]').forEach(function (rb) {
+      rb.addEventListener('change', function () { changerMode(rb.value); });
+    });
+    $('cc-saisie').addEventListener('input', function (e) {
+      if (!e.target.dataset.code) return;
+      etat.saisies[e.target.dataset.code] = e.target.value;
+      erreurChamp('cc-saisie', '');
+      lireSaisie();
+      majRapport(true);
+    });
     $('cc-modele').addEventListener('click', telechargerModele);
     $('cc-fichier').addEventListener('change', lireFichier);
     $('cc-col-code').addEventListener('change', function () { etat.choixDoublons = {}; majRapport(); });
@@ -7515,6 +7618,47 @@ function prechargerCartes() {
     $(id).setAttribute('aria-invalid', message ? 'true' : 'false');
   }
 
+  // --- Saisie directe (2026-11-10, décision 81) ---
+  function changerMode(mode) {
+    etat.mode = mode;
+    $('cc-bloc-fichier').hidden = mode !== 'fichier';
+    $('cc-bloc-saisie').hidden = mode !== 'saisie';
+    etat.choixDoublons = {};
+    erreurChamp('cc-fichier', ''); erreurChamp('cc-saisie', '');
+    if (mode === 'saisie') {
+      construireSaisie();
+      lireSaisie();
+    } else {
+      etat.table = null; etat.nomFichier = '';
+      const f = $('cc-fichier').files[0];
+      if (f) { lireFichier(); return; }
+      $('cc-colonnes').hidden = true;
+    }
+    majRapport();
+  }
+  function construireSaisie() {
+    const m = mailleActive();
+    const codes = Object.keys(m.zones).sort();
+    let h = '<table class="cc-saisie-table"><caption class="cc-sr">Valeurs à saisir, une par zone</caption>' +
+      '<thead><tr><th scope="col">Code</th><th scope="col">Zone</th><th scope="col">Valeur</th></tr></thead><tbody>';
+    codes.forEach(function (c) {
+      const nom = m.zones[c].nom;
+      h += '<tr><td>' + esc(c) + '</td><th scope="row">' + esc(nom) + '</th><td><input type="text" inputmode="decimal" ' +
+        'data-code="' + esc(c) + '" aria-label="Valeur pour ' + esc(nom) + ' (' + esc(c) + ')" value="' +
+        esc(etat.saisies[c] == null ? '' : etat.saisies[c]) + '"></td></tr>';
+    });
+    $('cc-saisie').innerHTML = h + '</tbody></table>';
+  }
+  function lireSaisie() {
+    etat.table = CC.tableDepuisSaisie(mailleActive(), etat.saisies);
+    etat.nomFichier = '';
+    ['cc-col-code', 'cc-col-valeur'].forEach(function (id, i) {
+      $(id).innerHTML = '<option value="0">code</option><option value="1">valeur</option>';
+      $(id).value = String(i);
+    });
+    if (!etat.table.lignes.length) etat.table = null;
+  }
+
   function lireFichier() {
     const f = $('cc-fichier').files[0];
     etat.table = null; etat.choixDoublons = {};
@@ -7623,19 +7767,25 @@ function prechargerCartes() {
       erreurChamp(id, ok ? '' : message);
       if (!ok && !premier) premier = id;
     }
+    const champ = etat.mode === 'saisie' ? 'cc-saisie' : 'cc-fichier';
     if (!etat.table || !etat.resultat) {
-      erreurChamp('cc-fichier', 'Choisissez un fichier CSV.');
-      premier = 'cc-fichier';
+      erreurChamp(champ, etat.mode === 'saisie' ? 'Saisissez au moins une valeur.' : 'Choisissez un fichier CSV.');
+      premier = champ;
     } else if (!Object.keys(etat.resultat.valeurs).length) {
-      erreurChamp('cc-fichier', 'Aucune valeur n’a pu être associée à une zone.');
-      premier = 'cc-fichier';
+      erreurChamp(champ, 'Aucune valeur n’a pu être associée à une zone.');
+      premier = champ;
     }
     exiger('cc-titre', 'Indiquez un titre.');
     exiger('cc-indicateur', 'Indiquez le nom des données.');
     let seuils = null;
     try { seuils = CC.lireSeuils($('cc-seuils').value); erreurChamp('cc-seuils', ''); }
     catch (err) { erreurChamp('cc-seuils', err.message); if (!premier) premier = 'cc-seuils'; }
-    if (premier) { $(premier).focus(); return; }
+    if (premier) {
+      // Saisie : le focus va dans la première case du tableau.
+      const cible = premier === 'cc-saisie' ? $('cc-saisie').querySelector('input') : $(premier);
+      if (cible) cible.focus();
+      return;
+    }
 
     const licence = $('cc-licence').value === 'Autre' ? ($('cc-licence-autre').value.trim() || 'Autre') : $('cc-licence').value;
     const unite = $('cc-unite').value.trim();
@@ -7677,7 +7827,7 @@ function prechargerCartes() {
       c.licence ? 'Licence : ' + c.licence : ''].filter(Boolean).join(' · ');
     contenu.innerHTML = '<div class="panel card cc-resultat">' +
       '<h2 class="cc-titre-carte" id="cc-titre-carte" tabindex="-1">' + esc(c.titre) + '</h2>' +
-      '<p class="cc-sous-titre">' + esc(c.indicateur) + ' · ' + esc(c.maille.libelle) + ' · fichier « ' + esc(etat.nomFichier) + ' »</p>' +
+      '<p class="cc-sous-titre">' + esc(c.indicateur) + ' · ' + esc(c.maille.libelle) + ' · ' + (etat.nomFichier ? 'fichier « ' + esc(etat.nomFichier) + ' »' : 'valeurs saisies') + '</p>' +
       '<div class="cc-carte-et-legende"><div class="cc-carte">' + CC.construireSvg(Object.assign({ compact: true }, c)) + '</div>' +
       '<div class="cc-legende"><p class="cc-legende-titre">' + esc(c.indicateur) + '</p><ul>' + legende +
       (nbAbs ? '<li><span class="cc-pastille cc-hachure"></span>Donnée absente <span class="cc-nb">(' + nbAbs + ')</span></li>' : '') +
@@ -7721,7 +7871,7 @@ function prechargerCartes() {
       $(m0.cle === 'licence' && $('cc-licence').value === 'Autre' ? 'cc-licence-autre' : CHAMP_VERS_ID[m0.cle]).focus();
       return;
     }
-    const prop = CC.creerProposition(etat.carte, etat.nomFichier, new Date().toISOString());
+    const prop = CC.creerProposition(etat.carte, etat.nomFichier || "saisie directe dans le site", new Date().toISOString());
     const nom = 'proposition-' + nomFichier('json');
     telecharger(new Blob([JSON.stringify(prop, null, 2)], { type: 'application/json' }), nom);
     $('cc-proposer-msg').innerHTML = '<p>Le fichier « ' + esc(nom) + ' » a été téléchargé sur votre ordinateur.</p>' +
