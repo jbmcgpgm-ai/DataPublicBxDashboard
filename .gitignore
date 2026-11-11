@@ -9,3 +9,9 @@ __pycache__/
 
 # Sortie de scripts/livrable/generate_dashboard.py (régénérable)
 dist/
+
+# Dossiers d attente de l actualisation planifiee (regenerables)
+actualisation/
+
+# Secrets (jamais dans Git ; modele : .env.example)
+.env
