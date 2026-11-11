@@ -456,6 +456,10 @@
     z-index: 5; box-shadow: var(--shadow);
   }
   .bar-track:hover .tt { opacity: 1; transform: translateY(0); }
+  /* Revue du 11/11, constat 12 : sur téléphone, l'infobulle reste dans l'écran (retour à la ligne). */
+  @media (max-width: 600px) {
+    .tt { white-space: normal; width: max-content; max-width: calc(100vw - 48px); }
+  }
 
   .carte-territorial-sort-row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 14px;
@@ -2431,10 +2435,10 @@ function prechargerCartes() {
       const pct = maxVal > 0 ? Math.max((u.value / maxVal) * 100, 1.2) : 0;
       const color = colorFor(u.value);
       html += '<div class="bar-row">';
-      html += '<div class="label" title="' + u.label + '">' + u.label + '</div>';
+      html += '<div class="label" title="' + escHtml(u.label) + '">' + escHtml(u.label) + '</div>';
       html += '<div class="bar-track tooltip-anchor">';
       html += '<div class="bar-fill" style="width:' + pct + '%; background:' + color + '"></div>';
-      html += '<div class="tt">' + u.label + (u.sublabel ? ' — ' + u.sublabel : '') + ' — ' + ciFmtValue(u.value, unite) + '</div>';
+      html += '<div class="tt">' + escHtml(u.label) + (u.sublabel ? ' — ' + escHtml(u.sublabel) : '') + ' — ' + ciFmtValue(u.value, unite) + '</div>';
       html += '</div>';
       html += '<div class="value">' + ciFmtValue(u.value, unite) + '</div>';
       html += '</div>';
