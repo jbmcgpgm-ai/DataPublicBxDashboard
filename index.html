@@ -9,6 +9,9 @@
 <!-- Pas d'indexation par les moteurs de recherche tant que la diffusion publique n'est pas validée
      (question Q1 du journal ; décision du porteur du 16/11/2026). -->
 <meta name="robots" content="noindex, nofollow">
+<!-- Politique de sécurité de contenu (audit du 16/11/2026, S-01) : seuls les scripts de la page
+     (empreintes calculées par generate_dashboard.py) et les fichiers de cartes du site s'exécutent. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-o4HbcnMCTRSfpzqrOU8uU+2jtS1ElQyotHxjkh2Xzbc=' 'sha256-mOyN3PB9cGTxVqoHImo//SqpyaL1bJ+ydB8JO7K5cmE=' 'sha256-huSs5+i/eq3zZLAnoJwY7Ghvn9qi4LpzcCbQqRJl40A=' 'sha256-uRkppS9t1zn6qVIsquxL/9qHhj3bvMjUg8DQUdVyEuI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <style>
   @font-face {
     font-family: 'Spectral';
@@ -1400,6 +1403,9 @@ function chargerCarte(carteId, cb) {
 // concurrencer l'affichage de l'accueil ; les echecs sont ignores ici (la
 // carte sera retentee au clic).
 function prechargerCartes() {
+  // Mode « économie de données » du navigateur (forfait mobile) : rien n'est préchargé, chaque carte
+  // est chargée au clic (audit du 16/11/2026, S-02 : environ 0,9 Mo évités à chaque visite).
+  if (navigator.connection && navigator.connection.saveData) return;
   const file = [CARTE_FICHIERS.base, CARTE_FICHIERS.overlays].concat(
     CARTE_DATA.cartes.map(function (c) { return CARTE_FICHIERS.cartes[c.id]; }));
   function suivant() {
@@ -5113,6 +5119,9 @@ function prechargerCartes() {
   function renderCarteIndicateur(carteId, code) {
     const carte = ciGetCarte(carteId);
     const svg = document.getElementById('carte-iris-svg');
+    // Tableau des valeurs (m-03) masqué tant que le rendu complet ne l'a pas refait : jamais les valeurs d'un autre indicateur.
+    const tableauPrecedent = document.getElementById('carte-iris-tableau');
+    if (tableauPrecedent) tableauPrecedent.hidden = true;
     const tooltip = document.getElementById('carte-iris-tooltip');
     const partitionPiesEl = document.getElementById('carte-iris-partition-pies');
     const multiselectEl = document.getElementById('carte-iris-multiselect');
@@ -5922,6 +5931,44 @@ function prechargerCartes() {
         barsWrap.style.display = 'none';
       }
     }
+
+    // Alternative textuelle de la carte (RGAA 1.1, 1.2 ; audit du 16/11/2026, m-03) : nom de l'image
+    // et tableau des valeurs par zone sous la carte.
+    const nomNiveau = niveau === 'iris' ? 'IRIS' : niveau === 'carreau' ? 'carreau de 200 m' : 'quartier';
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Carte : ' + indLabel + ', par ' + nomNiveau + '. Valeurs détaillées dans le tableau sous la carte.');
+    carteTableauZones(units, ind, indLabel, niveau);
+  }
+
+  function carteTableauZones(units, ind, indLabel, niveau) {
+    const wrap = document.getElementById('carte-iris-wrap');
+    if (!wrap || !wrap.parentNode) return;
+    let det = document.getElementById('carte-iris-tableau');
+    if (!det) {
+      det = document.createElement('details');
+      det.id = 'carte-iris-tableau';
+      det.className = 'cc-tableau carte-iris-tableau';
+      wrap.parentNode.insertBefore(det, wrap.nextSibling);
+    }
+    const ouvert = det.open;
+    det.hidden = false;
+    if (niveau === 'carreau') {
+      det.innerHTML = '<summary>Tableau des valeurs</summary><p class="cc-aide">' + units.length +
+        ' carreaux : tableau non affiché ; utilisez l’export CSV sous la légende.</p>';
+      det.open = ouvert;
+      return;
+    }
+    const lignes = units.slice().sort(function (a, b) { return String(a.label).localeCompare(String(b.label), 'fr'); });
+    let h = '<summary>Tableau des valeurs par ' + (niveau === 'iris' ? 'IRIS' : 'quartier') + ' (' + lignes.length + ' zones)</summary>' +
+      '<div class="table-scroll"><table><thead><tr><th scope="col">Zone</th><th scope="col">' + escHtml(indLabel) +
+      (ciUniteLibelle(ind.unite) ? ' (' + escHtml(ciUniteLibelle(ind.unite)) + ')' : '') + '</th></tr></thead><tbody>';
+    lignes.forEach(function (u) {
+      const v = u.value;
+      h += '<tr><th scope="row">' + escHtml(u.label) + (u.sublabel ? ' <span class="cc-nb">' + escHtml(u.sublabel) + '</span>' : '') +
+        '</th><td class="cc-num">' + (v === undefined || v === null ? 'Donnée absente' : ciFmtValue(v, ind.unite)) + '</td></tr>';
+    });
+    det.innerHTML = h + '</tbody></table></div>';
+    det.open = ouvert;
   }
 
   // Icone de forme statique (chaine HTML) pour la legende des sous-themes --
@@ -6753,7 +6800,9 @@ function prechargerCartes() {
     });
     const sites = Object.keys(parSite).sort(function (a, b) { return parSite[b].sources.length - parSite[a].sources.length || a.localeCompare(b, 'fr'); });
     let h = '<div class="panel card doc-page"><h2 id="doc-titre" tabindex="-1">Documentation</h2>' +
-      '<p class="doc-version">Version en ligne du <strong>' + dateFr(DOCUMENTATION.version) + '</strong>.</p>' +
+      // Date de génération de la page, pas des données (audit du 16/11/2026, S-03) : les dates des
+      // données figurent source par source ci-dessous.
+      '<p class="doc-version">Page générée le <strong>' + dateFr(DOCUMENTATION.version) + '</strong> ; dates des données : voir chaque source ci-dessous.</p>' +
       '<h3>À propos du site</h3>' +
       // Présentation chiffrée, retirée de l'en-tête (2026-11-10, demande du porteur).
       '<p class="doc-presentation">249 indicateurs construits à partir de sources publiques (Insee, SDES, Ademe, Caf, DGFiP, ' +
