@@ -10,8 +10,9 @@ __pycache__/
 # Sortie de scripts/livrable/generate_dashboard.py (régénérable)
 dist/
 
-# Dossiers d attente de l actualisation planifiee (regenerables)
-actualisation/
+# Dossiers d attente de l actualisation planifiee (regenerables). Ancre a la racine
+# (revue du 16/11/2026, M-02) : sans le « / » initial, scripts/actualisation/ etait ignore aussi.
+/actualisation/
 
 # Secrets (jamais dans Git ; modele : .env.example)
 .env
